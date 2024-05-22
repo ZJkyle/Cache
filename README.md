@@ -1,6 +1,6 @@
-# Experiment Environment
+# Experiment
 
-![Kimdodo](https://i.imgur.com/r8dBZDR.png "Kimdodo")
+<img src=https://i.imgur.com/r8dBZDR.png width=70% />
 
 ## Description
 
@@ -9,11 +9,9 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 
 ## Build
 
-In order to build llama.cpp you have four different options.
-
 -   Using `make`:
 
-    -   On Linux or MacOS:
+    -   Basic:
 
         ```bash
         make
@@ -21,12 +19,21 @@ In order to build llama.cpp you have four different options.
 
         **Note**: for `Debug` builds, run `make LLAMA_DEBUG=1`
 
+    -   Advanced:
+        -   Generate compile_commands.json: put `bear --` in front of `make`
+        -   BLAS Build: add `LLAMA_OPENBLAS=1`
+
 -   Using `CMake`:
 
-    ```bash
-    cmake -B build
-    cmake --build build --config Release
-    ```
+    -   Basic:
+        ```bash
+        cmake -B build
+        cmake --build build --config Release
+        ```
+    -   Advanced:
+
+        -   Generate compile_commands.json: add `-DCMAKE_EXPORT_COMPILE_COMMANDS=1` flags
+        -   BLAS Build: add `-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS` after `cmake -B build`
 
 ### Metal Build
 
@@ -36,32 +43,48 @@ To disable the Metal build at compile time use the `LLAMA_NO_METAL=1` flag or th
 When built with Metal support, you can explicitly disable GPU inference with the `--n-gpu-layers|-ngl 0` command-line
 argument.
 
-### BLAS Build
+## Models
 
-Building the program with BLAS support may lead to some performance improvements in prompt processing using batch sizes higher than 32 (the default is 512). Support with CPU-only BLAS implementations doesn't affect the normal generation performance. We may see generation performance improvements with GPU-involved BLAS implementations, e.g. cuBLAS, hipBLAS and CLBlast. There are currently several different BLAS implementations available for build and use:
+-   Llama-3-8b-64k-PoSE
+    -   [Original](https://huggingface.co/winglian/Llama-3-8b-64k-PoSE)
+    -   [GGUF](https://huggingface.co/QuantFactory/Llama-3-8b-64k-PoSE-GGUF)
+-   Phi-3-mini-128k-instruct
+    -   [Original](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
+    -   [GGUF](https://huggingface.co/PrunaAI/Phi-3-mini-128k-instruct-GGUF-Imatrix-smashed)
+-   Phi-3-small-128k-instruct
+    -   [Original](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
+    -   Null-GGUF
+-   dolphin-2.9-llama3-8b-256k
+    -   [Original](https://huggingface.co/cognitivecomputations/dolphin-2.9-llama3-8b-256k)
+    -   [GGUF](https://huggingface.co/PrunaAI/dolphin-2.9-llama3-8b-256k-GGUF-smashed)
+-   LWM-Text-512K
+    -   [Original](https://huggingface.co/LargeWorldModel/LWM-Text-512K)
+    -   [GGUF](https://huggingface.co/LoneStriker/LWM-Text-Chat-512K-GGUF)
+-   Llama-3-8B-Instruct-Gradient-1048k
+    -   [Original](https://huggingface.co/gradientai/Llama-3-8B-Instruct-Gradient-1048k)
+    -   [GGUF](https://huggingface.co/crusoeai/Llama-3-8B-Instruct-Gradient-1048k-GGUF)
 
--   #### Accelerate Framework:
+## Paremeters Of Llama.cpp
 
-    This is only available on Mac PCs and it's enabled by default. You can just build using the normal instructions.
+-   `-m`: directory of models
+-   `--color`: colorise output to distinguish prompt and user input from generations
+-   `-t`: number of threads to use during generation (default: 16)
+-   `-p`: prompt to start generation with (default: empty)
+-   `--random-prompt`: start with a randomized prompt
+-   `-f FNAME`: prompt file to start generation
+-   `-n`: number of tokens to predict (default: -1, -1 = infinity, -2 = until context filled)
+    -   Set the number of tokens to predict when generating text. Adjusting this value can influence the length of the generated text
+-   `-c`: size of the prompt context (default: 512, 0 = loaded from model)
+    -   Set the size of the prompt context. The default is 512, but LLaMA models were built with a context of 2048, which will provide better results for longer input/inference
+-   `--ignore-eos`: ignore end of stream token and continue generating (implies --logit-bias 2-inf)
+-   `--mlock`: Lock the model in memory, preventing it from being swapped out when memory-mapped. This can improve performance but trades away some of the advantages of memory-mapping by requiring more RAM to run and potentially slowing down load times as the model loads into RAM.
+-   `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
 
--   #### OpenBLAS:
+### Extended Context Size
 
-    This provides BLAS acceleration using only the CPU. Make sure to have OpenBLAS installed on your machine.
+Some fine-tuned models have extended the context length by scaling RoPE. For example, if the original pre-trained model has a context length (max sequence length) of 4096 (4k) and the fine-tuned model has 32k. That is a scaling factor of 8, and should work by setting the above --ctx-size to 32768 (32k) and --rope-scale to 8.
 
-    -   Using `make`:
-
-        -   On Linux:
-
-            ```bash
-            make LLAMA_OPENBLAS=1
-            ```
-
-    -   Using `CMake` on Linux:
-
-        ```bash
-        cmake -B build -DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS
-        cmake --build build --config Release
-        ```
+-   `--rope-scale N`: Where N is the linear scaling factor used by the fine-tuned model
 
 ## Memory/Disk Requirements
 

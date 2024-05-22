@@ -1,230 +1,18 @@
 # Experiment
 
 > Would I graduate in time?
+> ![Kimdodo](https://imgur.com/a/filffYW "Kimdodo")
 
 ## Description
 
 The main goal of `llama.cpp` is to enable LLM inference with minimal setup and state-of-the-art performance on a wide
 variety of hardware - locally and in the cloud.
 
-**Supported platforms:**
+I LDFLAGS: -framework Accelerate
+I CC: Apple clang version 14.0.3 (clang-1403.0.22.14.1)
+I CXX: Apple clang version 14.0.3 (clang-1403.0.22.14.1)
 
--   [x] Mac OS
--   [x] Linux
--   [x] Windows (via CMake)
--   [x] Docker
--   [x] FreeBSD
-
-**Supported models:**
-
-Typically finetunes of the base models below are supported as well.
-
--   [x] LLaMA 🦙
--   [x] LLaMA 2 🦙🦙
--   [x] LLaMA 3 🦙🦙🦙
--   [x] [Mistral 7B](https://huggingface.co/mistralai/Mistral-7B-v0.1)
--   [x] [Mixtral MoE](https://huggingface.co/models?search=mistral-ai/Mixtral)
--   [x] [DBRX](https://huggingface.co/databricks/dbrx-instruct)
--   [x] [Falcon](https://huggingface.co/models?search=tiiuae/falcon)
--   [x] [Chinese LLaMA / Alpaca](https://github.com/ymcui/Chinese-LLaMA-Alpaca) and [Chinese LLaMA-2 / Alpaca-2](https://github.com/ymcui/Chinese-LLaMA-Alpaca-2)
--   [x] [Vigogne (French)](https://github.com/bofenghuang/vigogne)
--   [x] [Koala](https://bair.berkeley.edu/blog/2023/04/03/koala/)
--   [x] [Baichuan 1 & 2](https://huggingface.co/models?search=baichuan-inc/Baichuan) + [derivations](https://huggingface.co/hiyouga/baichuan-7b-sft)
--   [x] [Aquila 1 & 2](https://huggingface.co/models?search=BAAI/Aquila)
--   [x] [Starcoder models](https://github.com/ggerganov/llama.cpp/pull/3187)
--   [x] [Refact](https://huggingface.co/smallcloudai/Refact-1_6B-fim)
--   [x] [MPT](https://github.com/ggerganov/llama.cpp/pull/3417)
--   [x] [Bloom](https://github.com/ggerganov/llama.cpp/pull/3553)
--   [x] [Yi models](https://huggingface.co/models?search=01-ai/Yi)
--   [x] [StableLM models](https://huggingface.co/stabilityai)
--   [x] [Deepseek models](https://huggingface.co/models?search=deepseek-ai/deepseek)
--   [x] [Qwen models](https://huggingface.co/models?search=Qwen/Qwen)
--   [x] [PLaMo-13B](https://github.com/ggerganov/llama.cpp/pull/3557)
--   [x] [Phi models](https://huggingface.co/models?search=microsoft/phi)
--   [x] [GPT-2](https://huggingface.co/gpt2)
--   [x] [Orion 14B](https://github.com/ggerganov/llama.cpp/pull/5118)
--   [x] [InternLM2](https://huggingface.co/models?search=internlm2)
--   [x] [CodeShell](https://github.com/WisdomShell/codeshell)
--   [x] [Gemma](https://ai.google.dev/gemma)
--   [x] [Mamba](https://github.com/state-spaces/mamba)
--   [x] [Grok-1](https://huggingface.co/keyfan/grok-1-hf)
--   [x] [Xverse](https://huggingface.co/models?search=xverse)
--   [x] [Command-R models](https://huggingface.co/models?search=CohereForAI/c4ai-command-r)
--   [x] [SEA-LION](https://huggingface.co/models?search=sea-lion)
--   [x] [GritLM-7B](https://huggingface.co/GritLM/GritLM-7B) + [GritLM-8x7B](https://huggingface.co/GritLM/GritLM-8x7B)
--   [x] [OLMo](https://allenai.org/olmo)
-
-(instructions for supporting more models: [HOWTO-add-model.md](./docs/HOWTO-add-model.md))
-
-**Multimodal models:**
-
--   [x] [LLaVA 1.5 models](https://huggingface.co/collections/liuhaotian/llava-15-653aac15d994e992e2677a7e), [LLaVA 1.6 models](https://huggingface.co/collections/liuhaotian/llava-16-65b9e40155f60fd046a5ccf2)
--   [x] [BakLLaVA](https://huggingface.co/models?search=SkunkworksAI/Bakllava)
--   [x] [Obsidian](https://huggingface.co/NousResearch/Obsidian-3B-V0.5)
--   [x] [ShareGPT4V](https://huggingface.co/models?search=Lin-Chen/ShareGPT4V)
--   [x] [MobileVLM 1.7B/3B models](https://huggingface.co/models?search=mobileVLM)
--   [x] [Yi-VL](https://huggingface.co/models?search=Yi-VL)
--   [x] [Mini CPM](https://huggingface.co/models?search=MiniCPM)
--   [x] [Moondream](https://huggingface.co/vikhyatk/moondream2)
-
-**HTTP server**
-
-[llama.cpp web server](./examples/server) is a lightweight [OpenAI API](https://github.com/openai/openai-openapi) compatible HTTP server that can be used to serve local models and easily connect them to existing clients.
-
-**Bindings:**
-
--   Python: [abetlen/llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
--   Go: [go-skynet/go-llama.cpp](https://github.com/go-skynet/go-llama.cpp)
--   Node.js: [withcatai/node-llama-cpp](https://github.com/withcatai/node-llama-cpp)
--   JS/TS (llama.cpp server client): [lgrammel/modelfusion](https://modelfusion.dev/integration/model-provider/llamacpp)
--   JavaScript/Wasm (works in browser): [tangledgroup/llama-cpp-wasm](https://github.com/tangledgroup/llama-cpp-wasm)
--   Typescript/Wasm (nicer API, available on npm): [ngxson/wllama](https://github.com/ngxson/wllama)
--   Ruby: [yoshoku/llama_cpp.rb](https://github.com/yoshoku/llama_cpp.rb)
--   Rust (more features): [edgenai/llama_cpp-rs](https://github.com/edgenai/llama_cpp-rs)
--   Rust (nicer API): [mdrokz/rust-llama.cpp](https://github.com/mdrokz/rust-llama.cpp)
--   Rust (more direct bindings): [utilityai/llama-cpp-rs](https://github.com/utilityai/llama-cpp-rs)
--   C#/.NET: [SciSharp/LLamaSharp](https://github.com/SciSharp/LLamaSharp)
--   Scala 3: [donderom/llm4s](https://github.com/donderom/llm4s)
--   Clojure: [phronmophobic/llama.clj](https://github.com/phronmophobic/llama.clj)
--   React Native: [mybigday/llama.rn](https://github.com/mybigday/llama.rn)
--   Java: [kherud/java-llama.cpp](https://github.com/kherud/java-llama.cpp)
--   Zig: [deins/llama.cpp.zig](https://github.com/Deins/llama.cpp.zig)
--   Flutter/Dart: [netdur/llama_cpp_dart](https://github.com/netdur/llama_cpp_dart)
--   PHP (API bindings and features built on top of llama.cpp): [distantmagic/resonance](https://github.com/distantmagic/resonance) [(more info)](https://github.com/ggerganov/llama.cpp/pull/6326)
-
-**UI:**
-
-Unless otherwise noted these projects are open-source with permissive licensing:
-
--   [iohub/collama](https://github.com/iohub/coLLaMA)
--   [janhq/jan](https://github.com/janhq/jan) (AGPL)
--   [nat/openplayground](https://github.com/nat/openplayground)
--   [Faraday](https://faraday.dev/) (proprietary)
--   [LMStudio](https://lmstudio.ai/) (proprietary)
--   [Layla](https://play.google.com/store/apps/details?id=com.laylalite) (proprietary)
--   [LocalAI](https://github.com/mudler/LocalAI) (MIT)
--   [LostRuins/koboldcpp](https://github.com/LostRuins/koboldcpp) (AGPL)
--   [Mozilla-Ocho/llamafile](https://github.com/Mozilla-Ocho/llamafile)
--   [nomic-ai/gpt4all](https://github.com/nomic-ai/gpt4all)
--   [ollama/ollama](https://github.com/ollama/ollama)
--   [oobabooga/text-generation-webui](https://github.com/oobabooga/text-generation-webui) (AGPL)
--   [psugihara/FreeChat](https://github.com/psugihara/FreeChat)
--   [cztomsik/ava](https://github.com/cztomsik/ava) (MIT)
--   [ptsochantaris/emeltal](https://github.com/ptsochantaris/emeltal)
--   [pythops/tenere](https://github.com/pythops/tenere) (AGPL)
--   [RecurseChat](https://recurse.chat/) (proprietary)
--   [semperai/amica](https://github.com/semperai/amica)
--   [withcatai/catai](https://github.com/withcatai/catai)
--   [Mobile-Artificial-Intelligence/maid](https://github.com/Mobile-Artificial-Intelligence/maid) (MIT)
--   [Msty](https://msty.app) (proprietary)
--   [LLMFarm](https://github.com/guinmoon/LLMFarm?tab=readme-ov-file) (MIT)
--   [KanTV](https://github.com/zhouwg/kantv?tab=readme-ov-file)(Apachev2.0 or later)
--   [Dot](https://github.com/alexpinel/Dot) (GPL)
--   [MindMac](https://mindmac.app) (proprietary)
--   [KodiBot](https://github.com/firatkiral/kodibot) (GPL)
--   [eva](https://github.com/ylsdamxssjxxdd/eva) (MIT)
--   [AI Sublime Text plugin](https://github.com/yaroslavyaroslav/OpenAI-sublime-text) (MIT)
-
-_(to have a project listed here, it should clearly state that it depends on `llama.cpp`)_
-
----
-
-Here is a typical run using LLaMA v2 13B on M2 Ultra:
-
-```
-$ make -j && ./main -m models/llama-13b-v2/ggml-model-q4_0.gguf -p "Building a website can be done in 10 simple steps:\nStep 1:" -n 400 -e
-I llama.cpp build info:
-I UNAME_S:  Darwin
-I UNAME_P:  arm
-I UNAME_M:  arm64
-I CFLAGS:   -I.            -O3 -std=c11   -fPIC -DNDEBUG -Wall -Wextra -Wpedantic -Wcast-qual -Wdouble-promotion -Wshadow -Wstrict-prototypes -Wpointer-arith -Wmissing-prototypes -pthread -DGGML_USE_K_QUANTS -DGGML_USE_ACCELERATE
-I CXXFLAGS: -I. -I./common -O3 -std=c++11 -fPIC -DNDEBUG -Wall -Wextra -Wpedantic -Wcast-qual -Wno-unused-function -Wno-multichar -pthread -DGGML_USE_K_QUANTS
-I LDFLAGS:   -framework Accelerate
-I CC:       Apple clang version 14.0.3 (clang-1403.0.22.14.1)
-I CXX:      Apple clang version 14.0.3 (clang-1403.0.22.14.1)
-
-make: Nothing to be done for `default'.
-main: build = 1041 (cf658ad)
-main: seed  = 1692823051
-llama_model_loader: loaded meta data with 16 key-value pairs and 363 tensors from models/llama-13b-v2/ggml-model-q4_0.gguf (version GGUF V1 (latest))
-llama_model_loader: - type  f32:   81 tensors
-llama_model_loader: - type q4_0:  281 tensors
-llama_model_loader: - type q6_K:    1 tensors
-llm_load_print_meta: format         = GGUF V1 (latest)
-llm_load_print_meta: arch           = llama
-llm_load_print_meta: vocab type     = SPM
-llm_load_print_meta: n_vocab        = 32000
-llm_load_print_meta: n_merges       = 0
-llm_load_print_meta: n_ctx_train    = 4096
-llm_load_print_meta: n_ctx          = 512
-llm_load_print_meta: n_embd         = 5120
-llm_load_print_meta: n_head         = 40
-llm_load_print_meta: n_head_kv      = 40
-llm_load_print_meta: n_layer        = 40
-llm_load_print_meta: n_rot          = 128
-llm_load_print_meta: n_gqa          = 1
-llm_load_print_meta: f_norm_eps     = 1.0e-05
-llm_load_print_meta: f_norm_rms_eps = 1.0e-05
-llm_load_print_meta: n_ff           = 13824
-llm_load_print_meta: freq_base      = 10000.0
-llm_load_print_meta: freq_scale     = 1
-llm_load_print_meta: model type     = 13B
-llm_load_print_meta: model ftype    = mostly Q4_0
-llm_load_print_meta: model size     = 13.02 B
-llm_load_print_meta: general.name   = LLaMA v2
-llm_load_print_meta: BOS token = 1 '<s>'
-llm_load_print_meta: EOS token = 2 '</s>'
-llm_load_print_meta: UNK token = 0 '<unk>'
-llm_load_print_meta: LF token  = 13 '<0x0A>'
-llm_load_tensors: ggml ctx size =    0.11 MB
-llm_load_tensors: mem required  = 7024.01 MB (+  400.00 MB per state)
-...................................................................................................
-llama_new_context_with_model: kv self size  =  400.00 MB
-llama_new_context_with_model: compute buffer total size =   75.41 MB
-
-system_info: n_threads = 16 / 24 | AVX = 0 | AVX2 = 0 | AVX512 = 0 | AVX512_VBMI = 0 | AVX512_VNNI = 0 | FMA = 0 | NEON = 1 | ARM_FMA = 1 | F16C = 0 | FP16_VA = 1 | WASM_SIMD = 0 | BLAS = 1 | SSE3 = 0 | VSX = 0 |
-sampling: repeat_last_n = 64, repeat_penalty = 1.100000, presence_penalty = 0.000000, frequency_penalty = 0.000000, top_k = 40, tfs_z = 1.000000, top_p = 0.950000, typical_p = 1.000000, temp = 0.800000, mirostat = 0, mirostat_lr = 0.100000, mirostat_ent = 5.000000
-generate: n_ctx = 512, n_batch = 512, n_predict = 400, n_keep = 0
-
-
- Building a website can be done in 10 simple steps:
-Step 1: Find the right website platform.
-Step 2: Choose your domain name and hosting plan.
-Step 3: Design your website layout.
-Step 4: Write your website content and add images.
-Step 5: Install security features to protect your site from hackers or spammers
-Step 6: Test your website on multiple browsers, mobile devices, operating systems etc…
-Step 7: Test it again with people who are not related to you personally – friends or family members will work just fine!
-Step 8: Start marketing and promoting the website via social media channels or paid ads
-Step 9: Analyze how many visitors have come to your site so far, what type of people visit more often than others (e.g., men vs women) etc…
-Step 10: Continue to improve upon all aspects mentioned above by following trends in web design and staying up-to-date on new technologies that can enhance user experience even further!
-How does a Website Work?
-A website works by having pages, which are made of HTML code. This code tells your computer how to display the content on each page you visit – whether it’s an image or text file (like PDFs). In order for someone else’s browser not only be able but also want those same results when accessing any given URL; some additional steps need taken by way of programming scripts that will add functionality such as making links clickable!
-The most common type is called static HTML pages because they remain unchanged over time unless modified manually (either through editing files directly or using an interface such as WordPress). They are usually served up via HTTP protocols – this means anyone can access them without having any special privileges like being part of a group who is allowed into restricted areas online; however, there may still exist some limitations depending upon where one lives geographically speaking.
-How to
-llama_print_timings:        load time =   576.45 ms
-llama_print_timings:      sample time =   283.10 ms /   400 runs   (    0.71 ms per token,  1412.91 tokens per second)
-llama_print_timings: prompt eval time =   599.83 ms /    19 tokens (   31.57 ms per token,    31.68 tokens per second)
-llama_print_timings:        eval time = 24513.59 ms /   399 runs   (   61.44 ms per token,    16.28 tokens per second)
-llama_print_timings:       total time = 25431.49 ms
-```
-
-And here is another demo of running both LLaMA-7B and [whisper.cpp](https://github.com/ggerganov/whisper.cpp) on a single M1 Pro MacBook:
-
-https://user-images.githubusercontent.com/1991296/224442907-7693d4be-acaa-4e01-8b4f-add84093ffff.mp4
-
-## Usage
-
-Here are the end-to-end binary build and model conversion steps for most supported models.
-
-### Get the Code
-
-```bash
-git clone https://github.com/ggerganov/llama.cpp
-cd llama.cpp
-```
-
-### Build
+## Build
 
 In order to build llama.cpp you have four different options.
 
@@ -237,17 +25,6 @@ In order to build llama.cpp you have four different options.
         ```
 
         **Note**: for `Debug` builds, run `make LLAMA_DEBUG=1`
-
-    -   On Windows:
-
-        1. Download the latest fortran version of [w64devkit](https://github.com/skeeto/w64devkit/releases).
-        2. Extract `w64devkit` on your pc.
-        3. Run `w64devkit.exe`.
-        4. Use the `cd` command to reach the `llama.cpp` folder.
-        5. From here you can run:
-            ```bash
-            make
-            ```
 
 -   Using `CMake`:
 
@@ -271,34 +48,6 @@ In order to build llama.cpp you have four different options.
         cmake -B build -G "Xcode"
         cmake --build build --config Debug
         ```
-
--   Using `Zig` (version 0.11 or later):
-
-    Building for optimization levels and CPU features can be accomplished using standard build arguments, for example AVX2, FMA, F16C,
-    it's also possible to cross compile for other operating systems and architectures:
-
-    ```bash
-    zig build -Doptimize=ReleaseFast -Dtarget=x86_64-windows-gnu -Dcpu=x86_64+avx2+fma+f16c
-    ```
-
-    The `zig targets` command will give you valid options to use.
-
--   Using `gmake` (FreeBSD):
-
-    1. Install and activate [DRM in FreeBSD](https://wiki.freebsd.org/Graphics)
-    2. Add your user to **video** group
-    3. Install compilation dependencies.
-
-        ```bash
-        sudo pkg install gmake automake autoconf pkgconf llvm15 clinfo clover \
-            opencl clblast openblas
-
-        gmake CC=/usr/local/bin/clang15 CXX=/usr/local/bin/clang++15 -j4
-        ```
-
-    **Notes:** With this packages you can build llama.cpp with OPENBLAS and
-    CLBLAST support for use OpenCL GPU acceleration in FreeBSD. Please read
-    the instructions for use and activate this options in this document below.
 
 ### Metal Build
 

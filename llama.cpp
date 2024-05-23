@@ -6,6 +6,7 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
+#include "kvcache_engine/MyClass.h"
 
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
@@ -2379,7 +2380,8 @@ static bool llama_kv_cache_init(
     const uint32_t n_embd_k_gqa = hparams.n_embd_k_gqa() + hparams.n_embd_k_s();
     const uint32_t n_embd_v_gqa = hparams.n_embd_v_gqa() + hparams.n_embd_v_s();
     const int64_t  n_layer      = hparams.n_layer;
-
+    MyClass obj;
+    obj.myFunction();
     cache.has_shift = false;
 
     // TODO: find a nicer way to add other recurrent model architectures

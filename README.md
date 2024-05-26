@@ -1,39 +1,26 @@
 # Experiment
 
-<img src=https://i.imgur.com/r8dBZDR.png width=70% />
+<img src=<https://i.imgur.com/r8dBZDR.png> width=70% />
 
 ## Description
 
 Add KV Cache optimizing module to llama.cpp project.
 Part of llama.cpp (e.g. regard to KV Cache management function) would be injected with new module.
 
-## Build
+## build
 
--   Using `make`:
+- Rebuild:
 
-    -   Basic:
-
-        ```bash
-        make
-        ```
-
-        **Note**: for `Debug` builds, run `make LLAMA_DEBUG=1`
-
-    -   Advanced:
-        -   Generate compile_commands.json: put `bear --` in front of `make`
-        -   BLAS Build: add `LLAMA_OPENBLAS=1`
-
--   Using `CMake`:
-
-    -   Basic:
-        ```bash
-        cmake -B build
-        cmake --build build --config Release
-        ```
-    -   Advanced:
-
-        -   Generate compile_commands.json: add `-DCMAKE_EXPORT_COMPILE_COMMANDS=1` flags
-        -   BLAS Build: add `-DLLAMA_BLAS=ON -DLLAMA_BLAS_VENDOR=OpenBLAS` after `cmake -B build`
+    ```bash
+    # remove old build
+    rm -rf build
+    # for debug
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+    cmake --build build
+    # normal
+    cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+    cmake --build build --config Release
+    ```
 
 ### Metal Build
 
@@ -45,46 +32,46 @@ argument.
 
 ## Models
 
--   Llama-3-8b-64k-PoSE
-    -   [Original](https://huggingface.co/winglian/Llama-3-8b-64k-PoSE)
-    -   [GGUF](https://huggingface.co/QuantFactory/Llama-3-8b-64k-PoSE-GGUF)
--   Phi-3-mini-128k-instruct
-    -   [Original](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
-    -   [GGUF](https://huggingface.co/PrunaAI/Phi-3-mini-128k-instruct-GGUF-Imatrix-smashed)
--   Phi-3-small-128k-instruct
-    -   [Original](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
-    -   Null-GGUF
--   dolphin-2.9-llama3-8b-256k
-    -   [Original](https://huggingface.co/cognitivecomputations/dolphin-2.9-llama3-8b-256k)
-    -   [GGUF](https://huggingface.co/PrunaAI/dolphin-2.9-llama3-8b-256k-GGUF-smashed)
--   LWM-Text-512K
-    -   [Original](https://huggingface.co/LargeWorldModel/LWM-Text-512K)
-    -   [GGUF](https://huggingface.co/LoneStriker/LWM-Text-Chat-512K-GGUF)
--   Llama-3-8B-Instruct-Gradient-1048k
-    -   [Original](https://huggingface.co/gradientai/Llama-3-8B-Instruct-Gradient-1048k)
-    -   [GGUF](https://huggingface.co/crusoeai/Llama-3-8B-Instruct-Gradient-1048k-GGUF)
+- Llama-3-8b-64k-PoSE
+  - [Original](https://huggingface.co/winglian/Llama-3-8b-64k-PoSE)
+  - [GGUF](https://huggingface.co/QuantFactory/Llama-3-8b-64k-PoSE-GGUF)
+- Phi-3-mini-128k-instruct
+  - [Original](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
+  - [GGUF](https://huggingface.co/PrunaAI/Phi-3-mini-128k-instruct-GGUF-Imatrix-smashed)
+- Phi-3-small-128k-instruct
+  - [Original](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
+  - Null-GGUF
+- dolphin-2.9-llama3-8b-256k
+  - [Original](https://huggingface.co/cognitivecomputations/dolphin-2.9-llama3-8b-256k)
+  - [GGUF](https://huggingface.co/PrunaAI/dolphin-2.9-llama3-8b-256k-GGUF-smashed)
+- LWM-Text-512K
+  - [Original](https://huggingface.co/LargeWorldModel/LWM-Text-512K)
+  - [GGUF](https://huggingface.co/LoneStriker/LWM-Text-Chat-512K-GGUF)
+- Llama-3-8B-Instruct-Gradient-1048k
+  - [Original](https://huggingface.co/gradientai/Llama-3-8B-Instruct-Gradient-1048k)
+  - [GGUF](https://huggingface.co/crusoeai/Llama-3-8B-Instruct-Gradient-1048k-GGUF)
 
 ## Paremeters Of Llama.cpp
 
--   `-m`: directory of models
--   `--color`: colorise output to distinguish prompt and user input from generations
--   `-t`: number of threads to use during generation (default: 16)
--   `-p`: prompt to start generation with (default: empty)
--   `--random-prompt`: start with a randomized prompt
--   `-f FNAME`: prompt file to start generation
--   `-n`: number of tokens to predict (default: -1, -1 = infinity, -2 = until context filled)
-    -   Set the number of tokens to predict when generating text. Adjusting this value can influence the length of the generated text
--   `-c`: size of the prompt context (default: 512, 0 = loaded from model)
-    -   Set the size of the prompt context. The default is 512, but LLaMA models were built with a context of 2048, which will provide better results for longer input/inference
--   `--ignore-eos`: ignore end of stream token and continue generating (implies --logit-bias 2-inf)
--   `--mlock`: Lock the model in memory, preventing it from being swapped out when memory-mapped. This can improve performance but trades away some of the advantages of memory-mapping by requiring more RAM to run and potentially slowing down load times as the model loads into RAM.
--   `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
+- `-m`: directory of models
+- `--color`: colorise output to distinguish prompt and user input from generations
+- `-t`: number of threads to use during generation (default: 16)
+- `-p`: prompt to start generation with (default: empty)
+- `--random-prompt`: start with a randomized prompt
+- `-f FNAME`: prompt file to start generation
+- `-n`: number of tokens to predict (default: -1, -1 = infinity, -2 = until context filled)
+  - Set the number of tokens to predict when generating text. Adjusting this value can influence the length of the generated text
+- `-c`: size of the prompt context (default: 512, 0 = loaded from model)
+  - Set the size of the prompt context. The default is 512, but LLaMA models were built with a context of 2048, which will provide better results for longer input/inference
+- `--ignore-eos`: ignore end of stream token and continue generating (implies --logit-bias 2-inf)
+- `--mlock`: Lock the model in memory, preventing it from being swapped out when memory-mapped. This can improve performance but trades away some of the advantages of memory-mapping by requiring more RAM to run and potentially slowing down load times as the model loads into RAM.
+- `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
 
 ### Extended Context Size
 
 Some fine-tuned models have extended the context length by scaling RoPE. For example, if the original pre-trained model has a context length (max sequence length) of 4096 (4k) and the fine-tuned model has 32k. That is a scaling factor of 8, and should work by setting the above --ctx-size to 32768 (32k) and --rope-scale to 8.
 
--   `--rope-scale N`: Where N is the linear scaling factor used by the fine-tuned model
+- `--rope-scale N`: Where N is the linear scaling factor used by the fine-tuned model
 
 ## Memory/Disk Requirements
 
@@ -121,12 +108,12 @@ _(outdated)_
 You can use the `perplexity` example to measure perplexity over a given prompt (lower perplexity is better).
 For more information, see [https://huggingface.co/docs/transformers/perplexity](https://huggingface.co/docs/transformers/perplexity).
 
-The perplexity measurements in table above are done against the `wikitext2` test dataset (https://paperswithcode.com/dataset/wikitext-2), with context length of 512.
+The perplexity measurements in table above are done against the `wikitext2` test dataset (<https://paperswithcode.com/dataset/wikitext-2>), with context length of 512.
 The time per token is measured on a MacBook M1 Pro 32GB RAM using 4 and 8 threads.
 
 ### How to run
 
-1. Download/extract: https://huggingface.co/datasets/ggml-org/ci/resolve/main/wikitext-2-raw-v1.zip
+1. Download/extract: <https://huggingface.co/datasets/ggml-org/ci/resolve/main/wikitext-2-raw-v1.zip>
 2. Run `./perplexity -m models/7B/ggml-model-q4_0.gguf -f wiki.test.raw`
 3. Output:
 

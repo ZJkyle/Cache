@@ -1355,8 +1355,4 @@ if (LLAMA_BUILD_EXAMPLES)
 endif()
 
 # kv cache engine
-
 add_subdirectory(kvcache_engine)
-target_link_libraries(llama PUBLIC
-    kvcache_engine
-    )

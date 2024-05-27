@@ -1,5 +1,12 @@
-add_library(kvcache_engine
-            MyClass.cpp
-            MyClass.h)
+set(TARGET kvcache_engine)
 
-target_include_directories(kvcache_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+add_library(${TARGET} STATIC
+    MyClass.cpp
+    MyClass.h
+)
+# if (BUILD_SHARED_LIBS)
+#     set_target_properties(${TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+# endif()
+
+target_include_directories(${TARGET} PUBLIC .)
+target_compile_features(${TARGET} PUBLIC cxx_std_11)

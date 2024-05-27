@@ -1,6 +1,6 @@
 # Experiment
 
-<img src=<https://i.imgur.com/r8dBZDR.png> width=70% />
+<img src="https://i.imgur.com/r8dBZDR.png" width=70% />
 
 ## Description
 
@@ -15,10 +15,10 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
     # remove old build
     rm -rf build
     # for debug
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
     cmake --build build
     # normal
-    cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+    cmake -B build -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
     cmake --build build --config Release
     ```
 

@@ -11148,7 +11148,12 @@ static void llama_graph_compute(
 static int llama_decode_internal(
          llama_context & lctx,
            llama_batch   batch_all) { // TODO: rename back to batch
-
+    // my entry
+    int cnt = 0;
+    for(int i=0; i<512*1024; ++i){
+        if(((float*)(lctx.kv_self.k_l[0]->data))[i]!=0)
+            cnt+=1;
+    }
     const uint32_t n_tokens_all = batch_all.n_tokens;
 
     if (n_tokens_all == 0) {
@@ -11307,7 +11312,6 @@ static int llama_decode_internal(
             }
         }
 
-        //printf("kv_self.n = %5d, kv_self.used = %5d, kv_self.head = %5d\n", kv_self.n, kv_self.used, kv_self.head);
 
         ggml_backend_sched_reset(lctx.sched);
         ggml_backend_sched_set_eval_callback(lctx.sched, lctx.cparams.cb_eval, lctx.cparams.cb_eval_user_data);
@@ -11362,7 +11366,6 @@ static int llama_decode_internal(
         if (n_tokens >= 32 && hparams.n_expert == 0 && ggml_cpu_has_blas() && !ggml_cpu_has_gpublas()) {
             n_threads = std::min(4, n_threads);
         }
-
         ggml_backend_sched_alloc_graph(lctx.sched, gf);
 
         llama_set_inputs(lctx, u_batch);
@@ -15648,11 +15651,15 @@ struct llama_context * llama_new_context_with_model(
             for (auto & v : ctx->kv_self.v_l) {
                 memory_size_v += ggml_nbytes(v);
             }
-
-            LLAMA_LOG_INFO("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
+            printf("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
                 (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f),
                 ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
                 ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
+
+            // LLAMA_LOG_INFO("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
+            //     (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f),
+            //     ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
+            //     ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
         }
 
         // graph outputs buffer

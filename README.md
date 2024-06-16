@@ -7,7 +7,13 @@
 Add KV Cache optimizing module to llama.cpp project.
 Part of llama.cpp (e.g. regard to KV Cache management function) would be injected with new module.
 
-## build
+## Quick start
+
+```bash
+./build/bin/main -m my_models/llama3-8b-64k-Q8_0.gguf --color -f my_prompts/tmp.txt -n 1
+```
+
+## Build
 
 - Rebuild:
 

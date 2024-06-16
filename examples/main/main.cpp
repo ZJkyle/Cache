@@ -1,6 +1,6 @@
 #include "common.h"
 
-#include "MyClass.h"
+#include "OutputKV.h"
 #include "console.h"
 #include "llama.h"
 #include <cassert>
@@ -592,6 +592,7 @@ int main(int argc, char **argv) {
 
   while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
     // predict
+
     if (!embd.empty()) {
       // Note: (n_ctx - 4) here is to match the logic for commandline prompt
       // handling via
@@ -1064,6 +1065,7 @@ int main(int argc, char **argv) {
   if (ctx_guidance) {
     llama_free(ctx_guidance);
   }
+  outputKV(ctx);
   llama_free(ctx);
   llama_free_model(model);
 
@@ -1073,7 +1075,5 @@ int main(int argc, char **argv) {
 #ifndef LOG_DISABLE_LOGS
   LOG_TEE("Log end\n");
 #endif // LOG_DISABLE_LOGS
-  MyClass tmp;
-  tmp.myFunction();
   return 0;
 }

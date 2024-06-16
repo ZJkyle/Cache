@@ -1065,6 +1065,7 @@ int main(int argc, char **argv) {
   if (ctx_guidance) {
     llama_free(ctx_guidance);
   }
+
   outputKV(ctx);
   llama_free(ctx);
   llama_free_model(model);

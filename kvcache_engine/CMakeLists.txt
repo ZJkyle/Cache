@@ -1,8 +1,6 @@
 set(TARGET kvcache_engine)
 
 add_library(${TARGET} STATIC
-    MyClass.cpp
-    MyClass.h
     OutputKV.cpp
     OutputKV.h
 )

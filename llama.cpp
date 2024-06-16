@@ -6,7 +6,6 @@
 #include "ggml.h"
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
-#include "kvcache_engine/MyClass.h"
 
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
@@ -2262,6 +2261,7 @@ struct llama_context {
     // control vectors
     struct llama_control_vector cvec;
 };
+
 
 static ggml_backend_buffer_type_t llama_default_buffer_type_offload(const llama_model & model, int gpu) {
     ggml_backend_buffer_type_t buft = nullptr;
@@ -11148,12 +11148,6 @@ static void llama_graph_compute(
 static int llama_decode_internal(
          llama_context & lctx,
            llama_batch   batch_all) { // TODO: rename back to batch
-    // my entry
-    int cnt = 0;
-    for(int i=0; i<512*1024; ++i){
-        if(((float*)(lctx.kv_self.k_l[0]->data))[i]!=0)
-            cnt+=1;
-    }
     const uint32_t n_tokens_all = batch_all.n_tokens;
 
     if (n_tokens_all == 0) {
@@ -17981,4 +17975,18 @@ static void llama_log_callback_default(ggml_log_level level, const char * text, 
     (void) user_data;
     fputs(text, stderr);
     fflush(stderr);
+}
+
+// roy
+uint32_t get_kv_self_used(const llama_context *ctx){
+    return ctx->kv_self.used;
+}
+const std::vector<struct ggml_tensor *> *get_key_vector_cpp(const struct llama_context *ctx);
+const std::vector<struct ggml_tensor *> *get_key_vector_cpp(const struct llama_context *ctx) {
+    return &(ctx->kv_self.k_l);
+}
+
+extern "C" struct ggml_tensor **get_key_vector(const struct llama_context *ctx) {
+    const auto *vec = get_key_vector_cpp(ctx);
+    return const_cast<struct ggml_tensor **>(vec->data());
 }

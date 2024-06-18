@@ -1740,7 +1740,7 @@ struct llama_hparams {
     bool rope_finetuned;
 
     uint32_t n_vocab;
-    uint32_t n_ctx_train; // context size the model was trained on
+    uint32_t n_ctx_train; // contextL size the model was trained on
     uint32_t n_embd;
     uint32_t n_head;
     uint32_t n_head_kv;
@@ -17981,12 +17981,29 @@ static void llama_log_callback_default(ggml_log_level level, const char * text, 
 uint32_t get_kv_self_used(const llama_context *ctx){
     return ctx->kv_self.used;
 }
+uint32_t get_n_head_kv(const struct llama_context *ctx){
+    return ctx->model.hparams.n_head_kv;
+}
+uint32_t get_n_layer(const struct llama_context *ctx){
+    return ctx->model.hparams.n_layer;
+}
+uint32_t get_n_embd_head(const struct llama_context *ctx){
+    return ctx->model.hparams.n_embd_head_k;
+}
 const std::vector<struct ggml_tensor *> *get_key_vector_cpp(const struct llama_context *ctx);
 const std::vector<struct ggml_tensor *> *get_key_vector_cpp(const struct llama_context *ctx) {
     return &(ctx->kv_self.k_l);
 }
+const std::vector<struct ggml_tensor *> *get_value_vector_cpp(const struct llama_context *ctx);
+const std::vector<struct ggml_tensor *> *get_value_vector_cpp(const struct llama_context *ctx) {
+    return &(ctx->kv_self.v_l);
+}
 
 extern "C" struct ggml_tensor **get_key_vector(const struct llama_context *ctx) {
     const auto *vec = get_key_vector_cpp(ctx);
+    return const_cast<struct ggml_tensor **>(vec->data());
+}
+extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx) {
+    const auto *vec = get_value_vector_cpp(ctx);
     return const_cast<struct ggml_tensor **>(vec->data());
 }

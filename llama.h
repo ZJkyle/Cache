@@ -60,8 +60,11 @@ struct llama_context;
 
 // roy
 uint32_t get_kv_self_used(const struct llama_context *ctx);
+uint32_t get_n_head_kv(const struct llama_context *ctx);
+uint32_t get_n_layer(const struct llama_context *ctx);
+uint32_t get_n_embd_head(const struct llama_context *ctx);
 struct ggml_tensor **get_key_vector(const struct llama_context *ctx);
-
+struct ggml_tensor **get_value_vector(const struct llama_context *ctx);
 //
 typedef int32_t llama_pos;
 typedef int32_t llama_token;

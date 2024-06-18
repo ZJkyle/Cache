@@ -57,6 +57,6 @@ def process_csv(file_path, column_name, base_output_file_path, max_tokens=64000)
 if __name__ == "__main__":
     csv_file_path = "input.csv"
     column_name = "summary"
-    base_output_file_path = "output"
+    base_output_file_path = "original_context/output"
 
     process_csv(csv_file_path, column_name, base_output_file_path)

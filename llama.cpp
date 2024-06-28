@@ -17977,7 +17977,6 @@ static void llama_log_callback_default(ggml_log_level level, const char * text, 
     fflush(stderr);
 }
 
-// roy
 uint32_t get_kv_self_used(const llama_context *ctx){
     return ctx->kv_self.used;
 }

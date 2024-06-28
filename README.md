@@ -13,20 +13,26 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ./build/bin/main -m my_models/llama3-8b-64k-Q8_0.gguf --color -f my_prompts/tmp.txt -n 1
 ```
 
+## Measure Perplexity
+
+```bash
+./build/bin/perplexity -m my_models/llama3-8b-64k-Q8_0.gguf -f wikitext-2-raw/wiki.test.raw -ctk q4_roy
+```
+
 ## Build
 
 - Rebuild:
 
-    ```bash
-    # remove old build
-    rm -rf build
-    # for debug
-    cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
-    cmake --build build
-    # normal
-    cmake -B build -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
-    cmake --build build --config Release
-    ```
+  ```bash
+  # remove old build
+  rm -rf build
+  # for debug
+  cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+  cmake --build build
+  # normal
+  cmake -B build -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
+  cmake --build build --config Release
+  ```
 
 ### Metal Build
 

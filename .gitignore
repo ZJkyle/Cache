@@ -124,3 +124,10 @@ nppBackup
 /tests/test-tokenizer-1-bpe
 /tests/test-rope
 /tests/test-backend-ops
+
+
+# roy
+/my_prompts/original_context
+/my_prompts/output_kv
+/my_models
+/wikitext-2-raw

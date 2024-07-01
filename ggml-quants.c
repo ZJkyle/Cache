@@ -1,3 +1,5 @@
+#include <immintrin.h>
+#include <xmmintrin.h>
 #define GGML_COMMON_IMPL_C
 #include "ggml-common.h"
 
@@ -1173,7 +1175,8 @@ void quantize_row_q8_0(const float * restrict x, void * restrict vy, int64_t k) 
         __m128i ni6 = lasx_extracti128( i3, 0);
         __m128i ni7 = lasx_extracti128( i3, 1);
 
-        // Convert int32 to int16
+        // Conv
+        // const int nkert int32 to int16
         ni0 = lsx_packs_w( ni0, ni1 );
         ni2 = lsx_packs_w( ni2, ni3 );
         ni4 = lsx_packs_w( ni4, ni5 );
@@ -1194,6 +1197,43 @@ void quantize_row_q8_0(const float * restrict x, void * restrict vy, int64_t k) 
 }
 
 // reference implementation for deterministic creation of model files
+
+
+// roy-todo
+void quantize_row_q8_roy_reference(const float * restrict x, block_q8_roy * restrict y, int64_t k) {
+    const int qk = QK8_ROY;
+    assert(k % qk == 0);
+    const int nb = k / qk;
+
+    for (int i = 0; i < nb; i++) {
+        float amax = 0.0f; // absolute max
+
+        for (int j = 0; j < qk; j++) {
+            const float v = x[i*qk + j];
+            amax = MAX(amax, fabsf(v));
+        }
+
+        const float d = amax / ((1 << 7) - 1);
+        const float id = d ? 1.0f/d : 0.0f;
+
+        y[i].d = GGML_FP32_TO_FP16(d);
+
+        int sum = 0;
+
+        for (int j = 0; j < qk/2; ++j) {
+            const float v0 = x[i*qk        + j]*id;
+            const float v1 = x[i*qk + qk/2 + j]*id;
+
+            y[i].qs[       j] = roundf(v0);
+            y[i].qs[qk/2 + j] = roundf(v1);
+
+            sum += y[i].qs[       j];
+            sum += y[i].qs[qk/2 + j];
+        }
+
+        y[i].s = GGML_FP32_TO_FP16(sum*d);
+    }
+}
 void quantize_row_q8_1_reference(const float * restrict x, block_q8_1 * restrict y, int64_t k) {
     assert(QK8_1 == 32);
     assert(k % QK8_1 == 0);
@@ -1228,6 +1268,88 @@ void quantize_row_q8_1_reference(const float * restrict x, block_q8_1 * restrict
         y[i].s = GGML_FP32_TO_FP16(sum*d);
     }
 }
+
+
+// roy-todo
+void quantize_row_q8_roy(const float * restrict x, void * restrict vy, int64_t k) {
+    assert(k % QK8_ROY == 0);
+    const int nb = k / QK8_ROY;
+
+    block_q8_roy * restrict y = vy;
+
+#if defined(__AVX2__) && defined(__USE_AVX__)
+    for (int i = 0; i < nb; i++) {
+        // Load elements into 4 AVX vectors
+        __m256 v0 = _mm256_loadu_ps( x );
+        __m256 v1 = _mm256_loadu_ps( x + 8 );
+        __m256 v2 = _mm256_loadu_ps( x + 16 );
+        __m256 v3 = _mm256_loadu_ps( x + 24 );
+        x += 32;
+
+        // Compute max(abs(e)) for the block
+        const __m256 signBit = _mm256_set1_ps( -0.0f );
+        __m256 maxAbs = _mm256_andnot_ps( signBit, v0 );
+        maxAbs = _mm256_max_ps( maxAbs, _mm256_andnot_ps( signBit, v1 ) );
+        maxAbs = _mm256_max_ps( maxAbs, _mm256_andnot_ps( signBit, v2 ) );
+        maxAbs = _mm256_max_ps( maxAbs, _mm256_andnot_ps( signBit, v3 ) );
+
+        __m128 max4 = _mm_max_ps( _mm256_extractf128_ps( maxAbs, 1 ), _mm256_castps256_ps128( maxAbs ) );
+        max4 = _mm_max_ps( max4, _mm_movehl_ps( max4, max4 ) );
+        max4 = _mm_max_ss( max4, _mm_movehdup_ps( max4 ) );
+        const float max_scalar = _mm_cvtss_f32( max4 );
+
+        // Quantize these floats
+        const float d = max_scalar / 127.f;
+        y[i].d = GGML_FP32_TO_FP16(d);
+        const float id = ( max_scalar != 0.0f ) ? 127.f / max_scalar : 0.0f;
+        const __m256 mul = _mm256_set1_ps( id );
+
+        // Apply the multiplier
+        v0 = _mm256_mul_ps( v0, mul );
+        v1 = _mm256_mul_ps( v1, mul );
+        v2 = _mm256_mul_ps( v2, mul );
+        v3 = _mm256_mul_ps( v3, mul );
+
+        // Round to nearest integer
+        v0 = _mm256_round_ps( v0, _MM_ROUND_NEAREST );
+        v1 = _mm256_round_ps( v1, _MM_ROUND_NEAREST );
+        v2 = _mm256_round_ps( v2, _MM_ROUND_NEAREST );
+        v3 = _mm256_round_ps( v3, _MM_ROUND_NEAREST );
+
+        // Convert floats to integers
+        __m256i i0 = _mm256_cvtps_epi32( v0 );
+        __m256i i1 = _mm256_cvtps_epi32( v1 );
+        __m256i i2 = _mm256_cvtps_epi32( v2 );
+        __m256i i3 = _mm256_cvtps_epi32( v3 );
+
+#if defined(__AVX2__) && defined(__USE_AVX__)
+        // Compute the sum of the quants and set y[i].s
+        y[i].s = GGML_FP32_TO_FP16(d * hsum_i32_8(_mm256_add_epi32(_mm256_add_epi32(i0, i1), _mm256_add_epi32(i2, i3))));
+
+        // Convert int32 to int16
+        i0 = _mm256_packs_epi32( i0, i1 );	// 0, 1, 2, 3,  8, 9, 10, 11,  4, 5, 6, 7, 12, 13, 14, 15
+        i2 = _mm256_packs_epi32( i2, i3 );	// 16, 17, 18, 19,  24, 25, 26, 27,  20, 21, 22, 23, 28, 29, 30, 31
+                                            // Convert int16 to int8
+        i0 = _mm256_packs_epi16( i0, i2 );	// 0, 1, 2, 3,  8, 9, 10, 11,  16, 17, 18, 19,  24, 25, 26, 27,  4, 5, 6, 7, 12, 13, 14, 15, 20, 21, 22, 23, 28, 29, 30, 31
+
+        // We got our precious signed bytes, but the order is now wrong
+        // These AVX2 pack instructions process 16-byte pieces independently
+        // The following instruction is fixing the order
+        const __m256i perm = _mm256_setr_epi32( 0, 4, 1, 5, 2, 6, 3, 7 );
+        i0 = _mm256_permutevar8x32_epi32( i0, perm );
+
+        _mm256_storeu_si256((__m256i *)y[i].qs, i0);
+#endif
+    }
+
+#else
+    GGML_UNUSED(nb);
+    // scalar
+    quantize_row_q8_roy_reference(x, y, k);
+#endif
+
+}
+
 
 void quantize_row_q8_1(const float * restrict x, void * restrict vy, int64_t k) {
     assert(k % QK8_1 == 0);
@@ -4635,25 +4757,19 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 }
 
 // roy-todo
-void ggml_vec_dot_q4_roy_q8_1(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
-    const int qk = QK8_1;
+void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
+    const int qk = QK8_ROY;
     const int nb = n / qk;
 
     assert(n % qk == 0);
-#if defined(__ARM_FEATURE_MATMUL_INT8)
-    assert((nrc == 2) || (nrc == 1));
-#else
-    assert(nrc == 1);
-#endif
     UNUSED(nrc);
     UNUSED(bx);
     UNUSED(by);
     UNUSED(bs);
 
     const block_q4_roy * restrict x = vx;
-    const block_q8_1 * restrict y = vy;
-
-#if defined(__AVX2__) || defined(__AVX__)
+    const block_q8_roy * restrict y = vy;
+#if defined(__AVX2__) && defined(__USE_AVX__)
     // Initialize accumulator with zeros
     __m256 acc = _mm256_setzero_ps();
 
@@ -4687,7 +4803,26 @@ void ggml_vec_dot_q4_roy_q8_1(int n, float * restrict s, size_t bs, const void *
     }
 
     *s = hsum_float_8(acc) + summs;
+#else
+    // scalar
+    float sumf = 0.0;
+
+    for (int i = 0; i < nb; i++) {
+        int sumi = 0;
+
+        for (int j = 0; j < qk/2; ++j) {
+            const int v0 = (x[i].qs[j] & 0x0F);
+            const int v1 = (x[i].qs[j] >>   4);
+
+            sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk/2]);
+        }
+
+        sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
+    }
+
+    *s = sumf;
 #endif
+
 }
 
 void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {

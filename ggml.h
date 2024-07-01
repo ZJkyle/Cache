@@ -398,6 +398,7 @@ enum ggml_type {
   GGML_TYPE_IQ1_M = 29,
   GGML_TYPE_BF16 = 30,
   GGML_TYPE_Q4_ROY = 31,
+  GGML_TYPE_Q8_ROY = 32,
   GGML_TYPE_COUNT,
 };
 

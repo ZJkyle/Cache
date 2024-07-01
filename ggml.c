@@ -916,14 +916,25 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
         .from_float               = quantize_row_q4_roy,
         .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy_reference,
-        .vec_dot                  = ggml_vec_dot_q4_roy_q8_1,
-        .vec_dot_type             = GGML_TYPE_Q8_1,
+        .vec_dot                  = ggml_vec_dot_q4_roy_q8_roy,
+        .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
         .nrows                    = 2,
 #else
         .nrows                    = 1,
 #endif
     },
+        [GGML_TYPE_Q8_ROY] = {
+        .type_name                = "q8_roy",
+        .blck_size                = QK8_ROY,
+        .type_size                = sizeof(block_q8_roy),
+        .is_quantized             = true,
+        .from_float               = quantize_row_q8_roy,
+        .from_float_reference     = (ggml_from_float_t) quantize_row_q8_roy_reference,
+        .vec_dot_type             = GGML_TYPE_Q8_ROY,
+        .nrows                    = 1,
+    },
+
 };
 
 // For internal test use
@@ -14272,6 +14283,7 @@ static void ggml_compute_forward_clamp(
         case GGML_TYPE_Q5_1:
         case GGML_TYPE_Q8_0:
         case GGML_TYPE_Q8_1:
+        case GGML_TYPE_Q8_ROY:
         case GGML_TYPE_Q2_K:
         case GGML_TYPE_Q3_K:
         case GGML_TYPE_Q4_K:

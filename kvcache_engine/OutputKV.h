@@ -5,5 +5,4 @@
 #include <iostream>
 #include <vector>
 void outputKV(llama_context *ctx);
-
 #endif // OUTPUTKV_H

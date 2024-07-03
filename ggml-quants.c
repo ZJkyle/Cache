@@ -711,6 +711,12 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
 
     const int nb = k / qk;
 
+    // FILE *file = fopen("./my_prompts/output_kv/uint8_kv.txt", "a");
+    // if (file == NULL) {
+    //     perror("Error opening file");
+    //     return;
+    // }
+
     for (int i = 0; i < nb; i++) {
         float min = FLT_MAX;
         float max = -FLT_MAX;
@@ -737,8 +743,12 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
 
             y[i].qs[j]  = xi0;
             y[i].qs[j] |= xi1 << 4;
+
+            // fprintf(file, "%d %d\n", j, y[i].qs[j]);
+
         }
     }
+    // fclose(file);
 }
 
 

@@ -599,7 +599,8 @@ struct ggml_tensor {
   size_t nb[GGML_MAX_DIMS];  // stride in bytes:
                              // nb[0] = ggml_type_size(type)
                              // nb[1] = nb[0]   * (ne[0] / ggml_blck_size(type))
-                             // + padding nb[i] = nb[i-1] * ne[i-1]
+                             // + padding
+                             // nb[i] = nb[i-1] * ne[i-1]
 
   // compute data
   enum ggml_op op;

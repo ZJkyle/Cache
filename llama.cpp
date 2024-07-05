@@ -6575,6 +6575,7 @@ static struct ggml_tensor * llm_build_moe_ffn(
     return moe_out;
 }
 
+
 static struct ggml_tensor * llm_build_kqv(
         struct ggml_context * ctx,
           const llama_model & model,
@@ -6602,8 +6603,26 @@ static struct ggml_tensor * llm_build_kqv(
     struct ggml_tensor * q = ggml_permute(ctx, q_cur, 0, 2, 1, 3);
     cb(q, "q", il);
 
-    struct ggml_tensor * k =
-        ggml_view_3d(ctx, kv.k_l[il],
+
+    struct ggml_tensor * k = ggml_reshape_3d(ctx, kv.k_l[il], n_embd_head_k,
+      n_head_kv, 512);
+
+    // struct ggml_tensor * k = ggml_view_3d(ctx, kv.k_l[il],
+    //             n_embd_head_k, n_kv, n_head_kv,
+    //             ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
+    //             ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
+    //             0);
+    // cb(k, "k", il);
+
+    k->ne[2] = kv.used;
+    k = ggml_rope_ext(
+      ctx, k, nullptr, nullptr,
+      128, LLAMA_ROPE_TYPE_NORM, 0, 131072, 2000000, 1,
+      0, 1, 32, 1
+    );
+
+    k->ne[2] = 512;
+    k = ggml_view_3d(ctx, k,
                 n_embd_head_k, n_kv, n_head_kv,
                 ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
                 ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
@@ -7058,7 +7077,6 @@ struct llm_build_context {
 
         // inp_pos - contains the positions
         struct ggml_tensor * inp_pos = build_inp_pos();
-
         // KQ_mask (mask for 1 head, it will be broadcasted to all heads)
         struct ggml_tensor * KQ_mask = build_inp_KQ_mask();
 
@@ -7089,8 +7107,7 @@ struct llm_build_context {
                 }
 
                 struct ggml_tensor * Vcur = ggml_mul_mat(ctx0, model.layers[il].wv, cur);
-                cb(Vcur, "Vcur", il);
-                if (model.layers[il].bv) {
+                cb(Vcur, "Vcur", il); if (model.layers[il].bv) {
                     Vcur = ggml_add(ctx0, Vcur, model.layers[il].bv);
                     cb(Vcur, "Vcur", il);
                 }
@@ -7102,12 +7119,12 @@ struct llm_build_context {
                 );
                 cb(Qcur, "Qcur", il);
 
-                Kcur = ggml_rope_ext(
-                    ctx0, ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens), inp_pos, nullptr,
-                    n_rot, rope_type, 0, n_orig_ctx, freq_base, freq_scale,
-                    ext_factor, attn_factor, beta_fast, beta_slow
-                );
-                cb(Kcur, "Kcur", il);
+                // Kcur = ggml_rope_ext(
+                //     ctx0, ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens), inp_pos, nullptr,
+                //     n_rot, rope_type, 0, n_orig_ctx, freq_base, freq_scale,
+                //     ext_factor, attn_factor, beta_fast, beta_slow
+                // );
+                // cb(Kcur, "Kcur", il);
 
                 cur = llm_build_kv(ctx0, model, hparams, cparams, kv_self, gf,
                         model.layers[il].wo, model.layers[il].bo,

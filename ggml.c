@@ -6274,7 +6274,7 @@ static struct ggml_tensor * ggml_rope_impl(
         bool                  inplace) {
     GGML_ASSERT((mode & 1) == 0 && "mode & 1 == 1 is no longer supported");
 
-    if(b){
+    if (b) {
       GGML_ASSERT(ggml_is_vector(b));
       GGML_ASSERT(b->type == GGML_TYPE_I32);
       GGML_ASSERT(a->ne[2] == b->ne[0]);
@@ -14648,12 +14648,20 @@ static void ggml_compute_forward_rope_f16(
     // this essentially just switches the sign of sin.
     const float sin_sign = forward ? 1.0f : -1.0f;
 
-    const int32_t * pos = (const int32_t *) src1->data;
+    const int32_t * pos = NULL;
+
+    if(src1){
+      pos = (const int32_t *) src1->data;
+    }
 
     for (int64_t i3 = 0; i3 < ne3; i3++) {
         for (int64_t i2 = 0; i2 < ne2; i2++) {
-            const int64_t p = pos[i2];
-
+            int64_t p;
+            if(pos){
+              p = pos[i2];
+            }else{
+              p = i2;
+            }
             float * cache = (float *) params->wdata + (ne0 + CACHE_LINE_SIZE_F32)*ith;
             if (!is_glm && !is_neox) { // TODO: cache sin/cos for glm, neox
                 ggml_rope_cache_init(p, freq_scale, corr_dims, ne0, ext_factor, attn_factor, cache, sin_sign, theta_scale);

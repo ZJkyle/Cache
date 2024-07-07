@@ -78,6 +78,7 @@ argument.
 - `--ignore-eos`: ignore end of stream token and continue generating (implies --logit-bias 2-inf)
 - `--mlock`: Lock the model in memory, preventing it from being swapped out when memory-mapped. This can improve performance but trades away some of the advantages of memory-mapping by requiring more RAM to run and potentially slowing down load times as the model loads into RAM.
 - `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
+- -fa: enable flash_attn
 
 ### Extended Context Size
 

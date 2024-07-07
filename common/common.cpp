@@ -1395,6 +1395,11 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
   // End of Parse args for logging parameters
 #endif // LOG_DISABLE_LOGS
 
+  if (arg == "--pre-rope-cache") {
+    params.pre_rope_cache = true;
+    return true;
+  }
+
   return false;
 }
 
@@ -2154,6 +2159,8 @@ llama_context_params_from_gpt_params(const gpt_params &params) {
 
   cparams.type_k = kv_cache_type_from_str(params.cache_type_k);
   cparams.type_v = kv_cache_type_from_str(params.cache_type_v);
+
+  cparams.pre_rope_cache = params.pre_rope_cache;
 
   return cparams;
 }

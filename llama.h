@@ -327,6 +327,8 @@ struct llama_context_params {
   // currently works only with CPU execution
   ggml_abort_callback abort_callback;
   void *abort_callback_data;
+
+  bool pre_rope_cache;
 };
 
 // model quantization parameters

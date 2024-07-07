@@ -1869,6 +1869,7 @@ struct llama_cparams {
 
     ggml_backend_sched_eval_callback cb_eval;
     void * cb_eval_user_data;
+    bool pre_rope_cache;
 };
 
 struct llama_layer {
@@ -6603,30 +6604,29 @@ static struct ggml_tensor * llm_build_kqv(
     struct ggml_tensor * q = ggml_permute(ctx, q_cur, 0, 2, 1, 3);
     cb(q, "q", il);
 
-
-    struct ggml_tensor * k = ggml_reshape_3d(ctx, kv.k_l[il], n_embd_head_k,
-      n_head_kv, 512);
-
-    // struct ggml_tensor * k = ggml_view_3d(ctx, kv.k_l[il],
-    //             n_embd_head_k, n_kv, n_head_kv,
-    //             ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
-    //             ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
-    //             0);
-    // cb(k, "k", il);
-
-    k->ne[2] = kv.used;
-    k = ggml_rope_ext(
-      ctx, k, nullptr, nullptr,
-      128, LLAMA_ROPE_TYPE_NORM, 0, 131072, 2000000, 1,
-      0, 1, 32, 1
-    );
-
-    k->ne[2] = 512;
-    k = ggml_view_3d(ctx, k,
-                n_embd_head_k, n_kv, n_head_kv,
-                ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
-                ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
-                0);
+    struct ggml_tensor * k;
+    if(cparams.pre_rope_cache && (kv.type_k==GGML_TYPE_F32 || kv.type_k==GGML_TYPE_F16)){
+        k = ggml_reshape_3d(ctx, kv.k_l[il], n_embd_head_k,
+          n_head_kv, 512);
+        k->ne[2] = kv.used;
+        k = ggml_rope_ext(
+          ctx, k, nullptr, nullptr,
+          128, LLAMA_ROPE_TYPE_NORM, 0, 131072, 2000000, 1,
+          0, 1, 32, 1
+        );
+        k->ne[2] = 512;
+        k = ggml_view_3d(ctx, k,
+                    n_embd_head_k, n_kv, n_head_kv,
+                    ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
+                    ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
+                    0);
+    }else{
+        k = ggml_view_3d(ctx, kv.k_l[il],
+                    n_embd_head_k, n_kv, n_head_kv,
+                    ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
+                    ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
+                    0);
+    }
     cb(k, "k", il);
 
     struct ggml_tensor * cur;
@@ -7119,12 +7119,14 @@ struct llm_build_context {
                 );
                 cb(Qcur, "Qcur", il);
 
-                // Kcur = ggml_rope_ext(
-                //     ctx0, ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens), inp_pos, nullptr,
-                //     n_rot, rope_type, 0, n_orig_ctx, freq_base, freq_scale,
-                //     ext_factor, attn_factor, beta_fast, beta_slow
-                // );
-                // cb(Kcur, "Kcur", il);
+                if(!lctx.cparams.pre_rope_cache){
+                    Kcur = ggml_rope_ext(
+                        ctx0, ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens), inp_pos, nullptr,
+                        n_rot, rope_type, 0, n_orig_ctx, freq_base, freq_scale,
+                        ext_factor, attn_factor, beta_fast, beta_slow
+                    );
+                    cb(Kcur, "Kcur", il);
+                }
 
                 cur = llm_build_kv(ctx0, model, hparams, cparams, kv_self, gf,
                         model.layers[il].wo, model.layers[il].bo,
@@ -15271,6 +15273,7 @@ struct llama_context_params llama_context_default_params() {
         /*.flash_attn                  =*/ false,
         /*.abort_callback              =*/ nullptr,
         /*.abort_callback_data         =*/ nullptr,
+        /*.pre_rope_cache              =*/ false
     };
 
     return result;
@@ -15502,6 +15505,8 @@ struct llama_context * llama_new_context_with_model(
     if (params.seed == LLAMA_DEFAULT_SEED) {
         params.seed = time(NULL);
     }
+
+    cparams.pre_rope_cache = params.pre_rope_cache;
 
     LLAMA_LOG_INFO("%s: n_ctx      = %u\n",     __func__, cparams.n_ctx);
     LLAMA_LOG_INFO("%s: n_batch    = %u\n",     __func__, cparams.n_batch);

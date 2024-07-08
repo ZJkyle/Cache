@@ -16,7 +16,7 @@ void outputKV(llama_context *ctx) {
   const std::vector<ggml_tensor *> *k_l = get_key_vector_cpp(ctx);
   const std::vector<ggml_tensor *> *v_l = get_value_vector_cpp(ctx);
 
-  std::ofstream outFile("my_prompts/output_kv/key_float.csv");
+  std::ofstream outFile("my_prompts/output_kv/rope_key_float.csv");
 
   for (uint32_t l = 0; l < n_layer; ++l) {
     const ggml_tensor *layer_tensor = (*k_l)[l];

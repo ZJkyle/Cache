@@ -10,7 +10,7 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ## Quick start
 
 ```bash
-./build/bin/main -m my_models/dolphin-llama3-8b-256k-Q8_0.gguf --color -c 32768 --repeat_penalty 1.1 --temp 0 -n 512 -p "give me a story as long as possible" -ctk f32
+./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0 -c 4096 -f my_prompts/original_context/story_prompt.txt --color -n 2048 --ignore-eos
 ```
 
 ## Measure Perplexity
@@ -24,12 +24,12 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 - Rebuild:
 
   ```bash
-  # remove old build
-  rm -rf build
   # for debug
+  rm -rf build
   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
   cmake --build build
   # normal
+  rm -rf build
   cmake -B build -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
   cmake --build build --config Release
   ```
@@ -44,24 +44,8 @@ argument.
 
 ## Models
 
-- Llama-3-8b-64k-PoSE
-  - [Original](https://huggingface.co/winglian/Llama-3-8b-64k-PoSE)
-  - [GGUF](https://huggingface.co/QuantFactory/Llama-3-8b-64k-PoSE-GGUF)
-- Phi-3-mini-128k-instruct
-  - [Original](https://huggingface.co/microsoft/Phi-3-mini-128k-instruct)
-  - [GGUF](https://huggingface.co/PrunaAI/Phi-3-mini-128k-instruct-GGUF-Imatrix-smashed)
-- Phi-3-small-128k-instruct
-  - [Original](https://huggingface.co/microsoft/Phi-3-small-128k-instruct)
-  - Null-GGUF
-- dolphin-2.9-llama3-8b-256k
-  - [Original](https://huggingface.co/cognitivecomputations/dolphin-2.9-llama3-8b-256k)
-  - [GGUF](https://huggingface.co/PrunaAI/dolphin-2.9-llama3-8b-256k-GGUF-smashed)
-- LWM-Text-512K
-  - [Original](https://huggingface.co/LargeWorldModel/LWM-Text-512K)
-  - [GGUF](https://huggingface.co/LoneStriker/LWM-Text-Chat-512K-GGUF)
-- Llama-3-8B-Instruct-Gradient-1048k
-  - [Original](https://huggingface.co/gradientai/Llama-3-8B-Instruct-Gradient-1048k)
-  - [GGUF](https://huggingface.co/crusoeai/Llama-3-8B-Instruct-Gradient-1048k-GGUF)
+- Llama3-8b-16K
+  - [GGUF](https://huggingface.co/PrunaAI/Llama-3-8B-16K-GGUF-smashed)
 
 ## Paremeters Of Llama.cpp
 

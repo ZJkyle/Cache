@@ -6606,15 +6606,17 @@ static struct ggml_tensor * llm_build_kqv(
 
     struct ggml_tensor * k;
     if(cparams.pre_rope_cache && (kv.type_k==GGML_TYPE_F32 || kv.type_k==GGML_TYPE_F16)){
-        k = ggml_reshape_3d(ctx, kv.k_l[il], n_embd_head_k,
-          n_head_kv, 512);
-        k->ne[2] = kv.used;
+        k = ggml_view_3d(ctx, kv.k_l[il], n_embd_head_k, n_head_kv, n_kv,
+            ggml_row_size(kv.k_l[il]->type, n_embd_head_k),
+            ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
+            0);
         k = ggml_rope_ext(
           ctx, k, nullptr, nullptr,
-          128, LLAMA_ROPE_TYPE_NORM, 0, 131072, 2000000, 1,
-          0, 1, 32, 1
+          hparams.n_rot, hparams.rope_type, 0, cparams.n_yarn_orig_ctx,
+          cparams.rope_freq_base, cparams.rope_freq_scale,
+          cparams.yarn_ext_factor, cparams.yarn_attn_factor,
+          cparams.yarn_beta_fast, cparams.yarn_beta_slow
         );
-        k->ne[2] = 512;
         k = ggml_view_3d(ctx, k,
                     n_embd_head_k, n_kv, n_head_kv,
                     ggml_row_size(kv.k_l[il]->type, n_embd_k_gqa),
@@ -6628,7 +6630,6 @@ static struct ggml_tensor * llm_build_kqv(
                     0);
     }
     cb(k, "k", il);
-
     struct ggml_tensor * cur;
 
     if (cparams.flash_attn) {

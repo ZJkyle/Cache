@@ -5,7 +5,7 @@ from scipy.stats import entropy
 
 # 读取CSV文件
 df_float = pd.read_csv(
-    "my_prompts/output_kv/key_float.csv",
+    "my_prompts/output_kv/pre_rope_key_float.csv",
     header=None,
     names=["layer", "embedding", "sequence", "value"],
 )

@@ -3,6 +3,8 @@ set(TARGET kvcache_engine)
 add_library(${TARGET} STATIC
     OutputKV.cpp
     OutputKV.h
+    util.cpp
+    util.h
 )
 
 target_include_directories(${TARGET} PUBLIC . ${CMAKE_SOURCE_DIR})

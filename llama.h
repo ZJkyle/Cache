@@ -3,6 +3,7 @@
 
 #include "ggml-backend.h"
 #include "ggml.h"
+#include "kvcache_engine/util.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -1206,5 +1207,7 @@ llama_token llama_sample_token_with_rng(struct llama_context *ctx,
                                         std::mt19937 &rng);
 
 #endif // LLAMA_API_INTERNAL
+
+void unmap_cache(const llama_context *ctx);
 
 #endif // LLAMA_H

@@ -7,6 +7,7 @@
 #include "ggml-alloc.h"
 #include "ggml-backend.h"
 
+
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
 #endif
@@ -2446,14 +2447,25 @@ static bool llama_kv_cache_init(
     cache.k_l.reserve(n_layer);
     cache.v_l.reserve(n_layer);
 
+    std::string mmap_dir = "kvcache_engine/mmap_data/";
+
     for (int i = 0; i < (int) n_layer; i++) {
         struct ggml_context * ctx = offload ? ctx_map.at(model.buft_layer[i].buft) : cache.ctxs.front();
-        ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
+        std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
+        size_t file_size_k = n_embd_k_gqa * kv_size * ggml_type_size(type_k);
+        int fd_k;
+        void* mapped_k = mapFileToMemory(filename_k, file_size_k, fd_k);
+        if (mapped_k == MAP_FAILED) {
+            return false;
+        }
+        ggml_tensor* k = static_cast<ggml_tensor*>(mapped_k);
+        // ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
         ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa*kv_size);
         ggml_format_name(k, "cache_k_l%d", i);
         ggml_format_name(v, "cache_v_l%d", i);
         cache.k_l.push_back(k);
         cache.v_l.push_back(v);
+        close(fd_k);
     }
 
     // allocate tensors and initialize the buffers to avoid NaNs in the padding
@@ -18028,4 +18040,11 @@ extern "C" struct ggml_tensor **get_key_vector(const struct llama_context *ctx) 
 extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx) {
     const auto *vec = get_value_vector_cpp(ctx);
     return const_cast<struct ggml_tensor **>(vec->data());
+}
+
+void unmap_cache(const llama_context *ctx){
+    size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
+    for(int i=0; i<32; i++){
+      unmapFileFromMemory(ctx->kv_self.k_l[i]->data, file_size_k);
+    }
 }

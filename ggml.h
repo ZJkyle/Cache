@@ -412,6 +412,7 @@ enum ggml_backend_type {
   GGML_BACKEND_TYPE_CPU = 0,
   GGML_BACKEND_TYPE_GPU = 10,
   GGML_BACKEND_TYPE_GPU_SPLIT = 20,
+  GGML_BACKEND_TYPE_MMAP = 30
 };
 
 // model file types
@@ -589,9 +590,7 @@ static const size_t GGML_OBJECT_SIZE = sizeof(struct ggml_object);
 struct ggml_tensor {
   enum ggml_type type;
 
-  GGML_DEPRECATED(
-      enum ggml_backend_type backend,
-      "use the buffer type to find the storage location of the tensor");
+  enum ggml_backend_type backend;
 
   struct ggml_backend_buffer *buffer;
 
@@ -2220,7 +2219,8 @@ GGML_API int ggml_cpu_has_ssse3(void);
 GGML_API int ggml_cpu_has_sycl(void);
 GGML_API int ggml_cpu_has_vsx(void);
 GGML_API int ggml_cpu_has_matmul_int8(void);
-
+GGML_API struct ggml_tensor *ggml_new_tensor_mmap(enum ggml_type type,
+                                                  int64_t ne);
 //
 // Internal types and functions exposed for tests and benchmarks
 //

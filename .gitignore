@@ -132,3 +132,4 @@ nppBackup
 /my_prompts/original_context
 /my_prompts/output_kv
 /my_prompts/outputpng
+/kvcache_engine/mmap_data

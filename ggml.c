@@ -3612,6 +3612,23 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         view_src   = view_src->view_src;
     }
 
+    if(view_src && view_src->backend==GGML_BACKEND_TYPE_MMAP){
+        view_src = (struct ggml_tensor *) ((char *) view_src + view_offs);
+        for (int i = 0; i < n_dims; i++) {
+            view_src->ne[i] = ne[i];
+        }
+        for (int i = n_dims; i < GGML_MAX_DIMS; i++){
+            view_src->ne[i] = 1;
+        }
+
+        view_src->nb[0] = ggml_type_size(type);
+        view_src->nb[1] = view_src->nb[0]*(view_src->ne[0]/ggml_blck_size(type));
+        for (int i = 2; i < GGML_MAX_DIMS; i++) {
+            view_src->nb[i] = view_src->nb[i - 1]*view_src->ne[i - 1];
+        }
+        return view_src;
+    }
+
     size_t data_size = ggml_row_size(type, ne[0]);
     for (int i = 1; i < n_dims; i++) {
         data_size *= ne[i];
@@ -23593,6 +23610,49 @@ int ggml_cpu_has_matmul_int8(void) {
 #else
     return 0;
 #endif
+}
+struct ggml_tensor * ggml_new_tensor_mmap(
+        enum   ggml_type      type,
+        int64_t               ne){
+
+#ifdef __clang__
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+    struct ggml_tensor* result = (struct ggml_tensor*)malloc(sizeof(struct ggml_tensor));
+    result->type = type;
+    result->backend = GGML_BACKEND_TYPE_MMAP;
+    result->buffer = NULL;
+    result->ne[0] = ne;
+    result->ne[1] = 1;
+    result->ne[2] = 1;
+    result->ne[3] = 1;
+    result->op = GGML_OP_NONE;
+    memset(result->op_params, 0, sizeof(result->op_params));
+    result->flags = 0;
+    result->grad = NULL;
+    memset(result->src, 0, sizeof(result->src));
+    result->perf_runs = 0;
+    result->perf_cycles = 0;
+    result->perf_time_us = 0;
+    result->view_src = NULL;
+    result->view_offs = 0;
+    result->data = NULL;
+    memset(result->name, 0, sizeof(result->name));
+    result->extra = NULL;
+    memset(result->padding, 0, sizeof(result->padding));
+#ifdef __clang__
+    #pragma clang diagnostic pop
+#endif
+
+    result->nb[0] = ggml_type_size(type);
+    result->nb[1] = result->nb[0]*(result->ne[0]/ggml_blck_size(type));
+    for (int i = 2; i < GGML_MAX_DIMS; i++) {
+        result->nb[i] = result->nb[i - 1]*result->ne[i - 1];
+    }
+
+    return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1208,5 +1208,5 @@ llama_token llama_sample_token_with_rng(struct llama_context *ctx,
 #endif // LLAMA_API_INTERNAL
 
 void unmap_cache(const llama_context *ctx);
-
+void mmap_cache(const llama_context *ctx);
 #endif // LLAMA_H

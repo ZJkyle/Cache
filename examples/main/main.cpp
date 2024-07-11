@@ -1068,7 +1068,7 @@ int main(int argc, char **argv) {
 
   // outputKV(ctx);
   // testmmap();
-  unmap_cache(ctx);
+  // unmap_cache(ctx);
   llama_free(ctx);
   llama_free_model(model);
 

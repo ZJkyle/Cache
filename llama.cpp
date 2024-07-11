@@ -8,6 +8,11 @@
 #include "ggml-backend.h"
 
 
+std::vector<struct block_q4_roy*> data_backup_q4_roy;
+std::vector<struct block_q8_roy*> data_backup_q8_roy;
+std::vector<ggml_fp16_t*> data_backup_fp16;
+std::vector<float*> data_backup_fp32;
+
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
 #endif
@@ -2451,44 +2456,51 @@ static bool llama_kv_cache_init(
 
     for (int i = 0; i < (int) n_layer; i++) {
         struct ggml_context * ctx = offload ? ctx_map.at(model.buft_layer[i].buft) : cache.ctxs.front();
-        // ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
-        ggml_tensor * k = ggml_new_tensor_mmap(type_k, n_embd_k_gqa*kv_size);
+        ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
+        // ggml_tensor * k = ggml_new_tensor_mmap(type_k, n_embd_k_gqa*kv_size);
         //
         std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
         size_t file_size_k = n_embd_k_gqa * kv_size * ggml_type_size(type_k);
         int fd_k;
         void* mapped_k = mapFileToMemory(filename_k, file_size_k, fd_k);
         if (mapped_k == MAP_FAILED) {
-            free(k->data);
             return false;
         }
+
         switch (type_k) {
             case GGML_TYPE_Q4_ROY: {
                 struct block_q4_roy* k_data = static_cast<struct block_q4_roy*>(mapped_k);
-                k->data = k_data;
+                memset(k_data, 0, file_size_k);
+                data_backup_q4_roy.emplace_back((block_q4_roy*)k->data);
+                k->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_Q8_ROY: {
                 struct block_q8_roy* k_data = static_cast<struct block_q8_roy*>(mapped_k);
-                k->data = k_data;
+                memset(k_data, 0, file_size_k);
+                data_backup_q8_roy.emplace_back((block_q8_roy*)k->data);
+                k->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_F16:{
                 ggml_fp16_t* k_data = static_cast<ggml_fp16_t*>(mapped_k);
-                k->data = k_data;
+                memset(k_data, 0, file_size_k);
+                data_backup_fp16.emplace_back((ggml_fp16_t*)k->data);
+                k->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_F32: {
                 float* k_data = static_cast<float*>(mapped_k);
-                k->data = k_data;
+                memset(k_data, 0, file_size_k);
+                data_backup_fp32.emplace_back((float*)k->data);
+                k->data = (void*)k_data;
                 break;
             }
             default:
                 LLAMA_LOG_ERROR("%s: failed to transform data type\n", __func__);
-                free(k->data);
                 return false;
         }
-        //
+
 
         ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa*kv_size);
         ggml_format_name(k, "cache_k_l%d", i);
@@ -15803,6 +15815,7 @@ struct llama_context * llama_new_context_with_model(
 }
 
 void llama_free(struct llama_context * ctx) {
+    unmap_cache(ctx);
     delete ctx;
 }
 
@@ -18074,8 +18087,27 @@ extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx
 
 void unmap_cache(const llama_context *ctx){
     size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
-    for(int i=0; i<32; i++){
+    for(size_t i=0; i<ctx->kv_self.k_l.size(); i++){
       unmapFileFromMemory(ctx->kv_self.k_l[i]->data, file_size_k);
-      free(ctx->kv_self.k_l[i]);
+      switch (ctx->kv_self.type_k){
+          case GGML_TYPE_Q4_ROY: {
+              ctx->kv_self.k_l[i]->data = (void*)data_backup_q4_roy[i];
+              break;
+          }
+          case GGML_TYPE_Q8_ROY: {
+              ctx->kv_self.k_l[i]->data = (void*)data_backup_q8_roy[i];
+              break;
+          }
+          case GGML_TYPE_F16:{
+              ctx->kv_self.k_l[i]->data = (void*)data_backup_fp16[i];
+              break;
+          }
+          case GGML_TYPE_F32: {
+              ctx->kv_self.k_l[i]->data = (void*)data_backup_fp32[i];
+              break;
+          }
+          default:
+              LLAMA_LOG_ERROR("%s: failed to backup data pointers \n", __func__);
+          }
     }
 }

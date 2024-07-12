@@ -1873,6 +1873,7 @@ struct llama_cparams {
     ggml_backend_sched_eval_callback cb_eval;
     void * cb_eval_user_data;
     bool pre_rope_cache;
+    bool cache_mmap;
 };
 
 struct llama_layer {
@@ -15325,7 +15326,8 @@ struct llama_context_params llama_context_default_params() {
         /*.flash_attn                  =*/ false,
         /*.abort_callback              =*/ nullptr,
         /*.abort_callback_data         =*/ nullptr,
-        /*.pre_rope_cache              =*/ false
+        /*.pre_rope_cache              =*/ false,
+        /*.cache_mmap                  =*/ false,
     };
 
     return result;
@@ -15559,6 +15561,7 @@ struct llama_context * llama_new_context_with_model(
     }
 
     cparams.pre_rope_cache = params.pre_rope_cache;
+    cparams.cache_mmap = params.cache_mmap;
 
     LLAMA_LOG_INFO("%s: n_ctx      = %u\n",     __func__, cparams.n_ctx);
     LLAMA_LOG_INFO("%s: n_batch    = %u\n",     __func__, cparams.n_batch);
@@ -15807,12 +15810,16 @@ struct llama_context * llama_new_context_with_model(
             LLAMA_LOG_INFO("%s: graph splits = %d\n", __func__, n_splits);
         }
     }
-    mmap_cache(ctx);
+    if(ctx->cparams.cache_mmap){
+        mmap_cache(ctx);
+    }
     return ctx;
 }
 
 void llama_free(struct llama_context * ctx) {
-    unmap_cache(ctx);
+    if(ctx->cparams.cache_mmap){
+      unmap_cache(ctx);
+    }
     delete ctx;
 }
 

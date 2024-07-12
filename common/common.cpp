@@ -1400,6 +1400,10 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     return true;
   }
 
+  if (arg == "--cache-mmap") {
+    params.cache_mmap = true;
+    return true;
+  }
   return false;
 }
 
@@ -2161,6 +2165,7 @@ llama_context_params_from_gpt_params(const gpt_params &params) {
   cparams.type_v = kv_cache_type_from_str(params.cache_type_v);
 
   cparams.pre_rope_cache = params.pre_rope_cache;
+  cparams.cache_mmap = params.cache_mmap;
 
   return cparams;
 }

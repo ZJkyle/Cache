@@ -222,6 +222,7 @@ struct gpt_params {
   std::vector<std::string> image; // path to image file(s)
 
   bool pre_rope_cache = false;
+  bool cache_mmap = false;
 };
 
 void gpt_params_handle_model_default(gpt_params &params);

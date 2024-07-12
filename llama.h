@@ -329,6 +329,7 @@ struct llama_context_params {
   void *abort_callback_data;
 
   bool pre_rope_cache;
+  bool cache_mmap;
 };
 
 // model quantization parameters

@@ -8,10 +8,7 @@
 #include "ggml-backend.h"
 
 
-std::vector<struct block_q4_roy*> data_backup_q4_roy;
-std::vector<struct block_q8_roy*> data_backup_q8_roy;
-std::vector<ggml_fp16_t*> data_backup_fp16;
-std::vector<float*> data_backup_fp32;
+std::vector<void*> cache_ptr_backup;
 
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
@@ -18087,31 +18084,9 @@ extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx
 
 void unmap_cache(const llama_context *ctx){
     size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
-    for(size_t i=0; i<ctx->kv_self.k_l.size(); i++){
-      switch (ctx->kv_self.type_k){
-          case GGML_TYPE_Q4_ROY: {
-              unmapFileFromMemory((block_q4_roy*)ctx->kv_self.k_l[i]->data, file_size_k);
-              ctx->kv_self.k_l[i]->data = (void*)data_backup_q4_roy[i];
-              break;
-          }
-          case GGML_TYPE_Q8_ROY: {
-              unmapFileFromMemory((block_q8_roy*)ctx->kv_self.k_l[i]->data, file_size_k);
-              ctx->kv_self.k_l[i]->data = (void*)data_backup_q8_roy[i];
-              break;
-          }
-          case GGML_TYPE_F16:{
-              unmapFileFromMemory((ggml_fp16_t*)ctx->kv_self.k_l[i]->data, file_size_k);
-              ctx->kv_self.k_l[i]->data = (void*)data_backup_fp16[i];
-              break;
-          }
-          case GGML_TYPE_F32: {
-              unmapFileFromMemory((float*)ctx->kv_self.k_l[i]->data, file_size_k);
-              ctx->kv_self.k_l[i]->data = (void*)data_backup_fp32[i];
-              break;
-          }
-          default:
-              LLAMA_LOG_ERROR("%s: failed to backup data pointers \n", __func__);
-          }
+    for(size_t i=0; i < 32; i++){
+        unmapFileFromMemory(ctx->kv_self.k_l[i]->data, file_size_k);
+        ctx->kv_self.k_l[i]->data = cache_ptr_backup[i];
     }
 }
 
@@ -18119,8 +18094,6 @@ void mmap_cache(const llama_context *ctx){
     std::string mmap_dir = "kvcache_engine/mmap_data/";
 
     for (int i = 0; i < 32; i++) {
-        // ggml_tensor * k = ggml_new_tensor_mmap(ctx->kv_self.type_k, 1024*ctx->kv_self.size);
-
         std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
         size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
         int fd_k;
@@ -18132,36 +18105,28 @@ void mmap_cache(const llama_context *ctx){
             case GGML_TYPE_Q4_ROY: {
                 struct block_q4_roy* k_data = static_cast<struct block_q4_roy*>(mapped_k);
                 memset(k_data, 0, file_size_k);
-                // data_backup_q4_roy.emplace_back((block_q4_roy*)k->data);
-                // k->data = (void*)k_data;
-                data_backup_q4_roy.emplace_back((block_q4_roy*)ctx->kv_self.k_l[i]->data);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
                 ctx->kv_self.k_l[i]->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_Q8_ROY: {
                 struct block_q8_roy* k_data = static_cast<struct block_q8_roy*>(mapped_k);
                 memset(k_data, 0, file_size_k);
-                // data_backup_q8_roy.emplace_back((block_q8_roy*)k->data);
-                // k->data = (void*)k_data;
-                data_backup_q8_roy.emplace_back((block_q8_roy*)ctx->kv_self.k_l[i]->data);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
                 ctx->kv_self.k_l[i]->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_F16:{
                 ggml_fp16_t* k_data = static_cast<ggml_fp16_t*>(mapped_k);
                 memset(k_data, 0, file_size_k);
-                // data_backup_fp16.emplace_back((ggml_fp16_t*)k->data);
-                // k->data = (void*)k_data;
-                data_backup_fp16.emplace_back((ggml_fp16_t*)ctx->kv_self.k_l[i]->data);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
                 ctx->kv_self.k_l[i]->data = (void*)k_data;
                 break;
             }
             case GGML_TYPE_F32: {
                 float* k_data = static_cast<float*>(mapped_k);
                 memset(k_data, 0, file_size_k);
-                // data_backup_fp32.emplace_back((float*)k->data);
-                // k->data = (void*)k_data;
-                data_backup_fp32.emplace_back((float*)ctx->kv_self.k_l[i]->data);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
                 ctx->kv_self.k_l[i]->data = (void*)k_data;
                 break;
             }

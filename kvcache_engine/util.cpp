@@ -39,5 +39,7 @@ void *mapFileToMemory(const std::string &filename, size_t size, int &fd) {
 void unmapFileFromMemory(void *addr, size_t size) {
   if (munmap(addr, size) == -1) {
     perror("munmap");
+    fprintf(stderr, "Failed to unmap memory at address %p with size %zu\n",
+            addr, size);
   }
 }

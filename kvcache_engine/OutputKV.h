@@ -10,9 +10,4 @@
 #include <vector>
 
 void outputKV(llama_context *ctx);
-void testmmap();
-struct MyStruct {
-  int id;
-  float value;
-};
 #endif // OUTPUTKV_H

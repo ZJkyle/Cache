@@ -129,7 +129,7 @@ nppBackup
 # roy
 /my_models
 /wikitext-2-raw
-/my_prompts/original_context
+/my_prompts/original_context/output*
 /my_prompts/output_kv
 /my_prompts/outputpng
 /kvcache_engine/mmap_data

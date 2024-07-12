@@ -132,4 +132,5 @@ nppBackup
 /my_prompts/original_context/output*
 /my_prompts/output_kv
 /my_prompts/outputpng
-/kvcache_engine/mmap_data
+/kvcache_engine/mmap_data/*
+!/kvcache_engine/mmap_data/.gitkeep

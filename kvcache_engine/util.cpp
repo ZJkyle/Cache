@@ -7,7 +7,7 @@ bool ensureFileSize(int fd, size_t size) {
     return false;
   }
 
-  if (sb.st_size < size) {
+  if (static_cast<long unsigned int>(sb.st_size) < size) {
     if (ftruncate(fd, size) == -1) {
       perror("ftruncate");
       return false;

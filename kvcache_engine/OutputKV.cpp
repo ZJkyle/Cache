@@ -14,7 +14,7 @@ void outputKV(llama_context *ctx) {
   uint32_t n_embd_head = get_n_embd_head(ctx);
   uint32_t n_embd_gqa = n_head_kv * n_embd_head;
   const std::vector<ggml_tensor *> *k_l = get_key_vector_cpp(ctx);
-  const std::vector<ggml_tensor *> *v_l = get_value_vector_cpp(ctx);
+  // const std::vector<ggml_tensor *> *v_l = get_value_vector_cpp(ctx);
 
   std::ofstream outFile("my_prompts/output_kv/rope_key_float.csv");
 

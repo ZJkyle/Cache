@@ -5,6 +5,8 @@ add_library(${TARGET} STATIC
     OutputKV.h
     util.cpp
     util.h
+    compression.cpp
+    compression.h
 )
 
 target_include_directories(${TARGET} PUBLIC . ${CMAKE_SOURCE_DIR})

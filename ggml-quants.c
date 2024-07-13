@@ -5,6 +5,7 @@
 
 #include "ggml-quants.h"
 #include "ggml-impl.h"
+#include "kvcache_engine/compression.h"
 
 #define GGML_COMMON_IMPL_C
 #include "ggml-common.h"
@@ -706,7 +707,6 @@ void quantize_row_q4_0(const float * restrict x, void * restrict y, int64_t k) {
 // roy-todo
 void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * restrict y, int64_t k) {
     const int qk = QK4_ROY;
-
     assert(k % qk == 0);
 
     const int nb = k / qk;

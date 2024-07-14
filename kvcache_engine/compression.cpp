@@ -7,7 +7,7 @@
 #include <queue>
 #include <unordered_map>
 
-std::unordered_map<void *, HuffmanResult> database;
+std::unordered_map<const void *, HuffmanResult> database;
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -41,10 +41,12 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
   std::map<uint8_t, unsigned> codeLengths;
   std::function<void(Node *, std::string)> traverse = [&](Node *node,
                                                           std::string code) {
-    if (!node)
+    if (!node) {
       return;
-    if (node->data != 255)
+    }
+    if (node->data != 255) {
       codeLengths[node->data] = code.length();
+    }
     traverse(node->left, code + "0");
     traverse(node->right, code + "1");
   };
@@ -194,8 +196,8 @@ void entrypoint_encode(uint8_t *data, size_t size, void *addr) {
   result.encodeddata = encoded;
   database[addr] = result;
 }
-uint8_t *entrypoint_decode(void *addr) {
-  auto data = database[addr];
+uint8_t *entrypoint_decode(const void *addr) {
+  auto data = database.at(addr);
   auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
   auto originalData = decodeHuffman(data.encodeddata, huffmanCodes);
   return originalData;
@@ -205,7 +207,7 @@ extern "C" {
 void encoding_c(uint8_t *data, size_t size, void *addr) {
   entrypoint_encode(data, size, addr);
 }
-uint8_t *decoding_c(void *addr) { return entrypoint_decode(addr); }
+uint8_t *decoding_c(const void *addr) { return entrypoint_decode(addr); }
 #endif
 #ifdef __cplusplus
 }

@@ -14,7 +14,7 @@ extern "C" {
 struct Node;
 struct HuffmanResult;
 void encoding_c(uint8_t *data, size_t size, void *addr);
-uint8_t *decoding_c(void *addr);
+uint8_t *decoding_c(const void *addr);
 
 #ifdef __cplusplus
 }
@@ -53,6 +53,6 @@ reconstructHuffmanCodes(const std::vector<uint8_t> &symbols,
                         const std::vector<uint8_t> &codeLengths);
 
 void entrypoint_encode(uint8_t *data, size_t size, void *addr);
-uint8_t *entrypoint_decode(void *addr);
+uint8_t *entrypoint_decode(const void *addr);
 #endif // __cplusplus
 #endif // COMPRESSION_H

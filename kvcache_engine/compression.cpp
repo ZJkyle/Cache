@@ -5,6 +5,10 @@
 #include <functional>
 #include <numeric>
 #include <queue>
+#include <unordered_map>
+
+std::unordered_map<void *, HuffmanResult> database;
+
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
   std::map<uint8_t, unsigned> freqs;
@@ -158,34 +162,51 @@ reconstructHuffmanCodes(const std::vector<uint8_t> &symbols,
   return huffmanCodes;
 }
 
-std::vector<uint8_t>
-decodeHuffman(const std::vector<uint8_t> &encodedData,
-              const std::map<std::string, uint8_t> &huffmanCodes) {
-  std::vector<uint8_t> decodedData;
+uint8_t *decodeHuffman(const std::vector<uint8_t> &encodedData,
+                       const std::map<std::string, uint8_t> &huffmanCodes) {
   std::string currentCode;
+  std::vector<uint8_t> tempDecoded; // Temporarily store decoded data
 
   for (uint8_t byte : encodedData) {
     for (int i = 7; i >= 0; --i) {
       currentCode.push_back(((byte >> i) & 1) ? '1' : '0');
       if (huffmanCodes.count(currentCode)) {
-        decodedData.push_back(huffmanCodes.at(currentCode));
+        tempDecoded.push_back(huffmanCodes.at(currentCode));
         currentCode.clear();
       }
     }
   }
+  size_t decodedSize = tempDecoded.size();
+  uint8_t *decodedData =
+      new uint8_t[decodedSize]; // Allocate the array dynamically
+
+  // Copy from vector to allocated array
+  std::copy(tempDecoded.begin(), tempDecoded.end(), decodedData);
+
   return decodedData;
 }
 
-void entrypoint_encode(uint8_t *data, uint8_t size) {
+void entrypoint_encode(uint8_t *data, size_t size, void *addr) {
   auto freq = generateFrequencyTable(data, size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
   auto encoded = encode(data, size, codes);
   HuffmanResult result = prepareDecodingInfo(codes);
   result.encodeddata = encoded;
+  database[addr] = result;
 }
+uint8_t *entrypoint_decode(void *addr) {
+  auto data = database[addr];
+  auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
+  auto originalData = decodeHuffman(data.encodeddata, huffmanCodes);
+  return originalData;
+}
+
 extern "C" {
-void encoding_c(uint8_t *data, size_t size) { entrypoint_encode(data, size); }
+void encoding_c(uint8_t *data, size_t size, void *addr) {
+  entrypoint_encode(data, size, addr);
+}
+uint8_t *decoding_c(void *addr) { return entrypoint_decode(addr); }
 #endif
 #ifdef __cplusplus
 }

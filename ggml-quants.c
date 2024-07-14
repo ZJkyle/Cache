@@ -16,6 +16,7 @@
 #include <float.h>
 #include <stdlib.h> // for qsort
 #include <stdio.h>  // for GGML_ASSERT
+#include <stdint.h>
 
 #define GROUP_MAX_EPS 1e-15f
 #define GROUP_MAX_EPS_IQ3_XXS 1e-8f
@@ -742,7 +743,8 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
             tmp[j] = xi0;
             tmp[j] |= xi1<<4;
         }
-        encoding_c(tmp, QK4_ROY, y);
+
+        encoding_c(tmp, qk/2, d);
     }
 }
 
@@ -4813,7 +4815,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
 
     for (int i = 0; i < nb; i++) {
         int sumi = 0;
-        uint8_t* data = decoding_c(vx);
+        uint8_t* data = decoding_c(x[i].key);
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);

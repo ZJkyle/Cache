@@ -1,13 +1,14 @@
+#include <cstdint>
 #ifdef __cplusplus
 #include "compression.h"
 #include <algorithm>
 #include <bitset>
 #include <functional>
+#include <iostream>
 #include <numeric>
 #include <queue>
 #include <unordered_map>
-
-std::unordered_map<const void *, HuffmanResult> database;
+std::unordered_map<uintptr_t, HuffmanResult> database;
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -187,27 +188,42 @@ uint8_t *decodeHuffman(const std::vector<uint8_t> &encodedData,
   return decodedData;
 }
 
-void entrypoint_encode(uint8_t *data, size_t size, void *addr) {
+void entrypoint_encode(uint8_t *data, size_t size, const float key) {
   auto freq = generateFrequencyTable(data, size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
   auto encoded = encode(data, size, codes);
   HuffmanResult result = prepareDecodingInfo(codes);
   result.encodeddata = encoded;
-  database[addr] = result;
+  auto it = database.find(key);
+  if (it != database.end()) {
+    // Handle the case where the key is not found
+    std::cerr << "Error: Double Key\n";
+    return;
+  }
+  database[key] = result;
 }
-uint8_t *entrypoint_decode(const void *addr) {
-  auto data = database.at(addr);
+uint8_t *entrypoint_decode(const float key) {
+  // Check if the key exists in the database
+  auto it = database.find(key);
+  if (it == database.end()) {
+    // Handle the case where the key is not found
+    std::cerr << "Error: Key not found in database\n";
+    return nullptr;
+  } else {
+    std::cout << "Key: " << key << "\n";
+  }
+  auto data = it->second;
   auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
   auto originalData = decodeHuffman(data.encodeddata, huffmanCodes);
   return originalData;
 }
 
 extern "C" {
-void encoding_c(uint8_t *data, size_t size, void *addr) {
-  entrypoint_encode(data, size, addr);
+void encoding_c(uint8_t *data, size_t size, const float key) {
+  entrypoint_encode(data, size, key);
 }
-uint8_t *decoding_c(const void *addr) { return entrypoint_decode(addr); }
+uint8_t *decoding_c(const float key) { return entrypoint_decode(key); }
 #endif
 #ifdef __cplusplus
 }

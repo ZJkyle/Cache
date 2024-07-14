@@ -210,8 +210,6 @@ uint8_t *entrypoint_decode(const float key) {
     // Handle the case where the key is not found
     std::cerr << "Error: Key not found in database\n";
     return nullptr;
-  } else {
-    std::cout << "Key: " << key << "\n";
   }
   auto data = it->second;
   auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);

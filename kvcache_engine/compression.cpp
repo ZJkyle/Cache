@@ -58,16 +58,15 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
   std::map<uint8_t, std::string> canonicalCodes;
   int code = 0;
   int previousLength = 0; // To track the previous group's code length
+
   for (auto &lengthGroup : sortedByLength) {
     sort(lengthGroup.second.begin(), lengthGroup.second.end());
 
     if (previousLength == 0) {
-      code = (1 << (lengthGroup.first -
-                    1)); // Start at the smallest number for this length
+      code = 0; // Start at 0 for the smallest length
     } else {
-      int bitsToShift = lengthGroup.first - previousLength;
-      code <<=
-          bitsToShift; // Adjust the 'code' to match the new length precisely.
+      code <<= (lengthGroup.first -
+                previousLength); // Adjust the 'code' to match the new length
     }
 
     for (auto &ch : lengthGroup.second) {

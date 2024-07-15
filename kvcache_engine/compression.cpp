@@ -8,7 +8,7 @@
 #include <numeric>
 #include <queue>
 #include <unordered_map>
-std::unordered_map<uintptr_t, HuffmanResult> database;
+std::unordered_map<const void*, HuffmanResult> database;
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -188,27 +188,27 @@ uint8_t *decodeHuffman(const std::vector<uint8_t> &encodedData,
   return decodedData;
 }
 
-void entrypoint_encode(uint8_t *data, size_t size, const float key) {
+void entrypoint_encode(uint8_t *data, size_t size, const void* key) {
   auto freq = generateFrequencyTable(data, size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
   auto encoded = encode(data, size, codes);
   HuffmanResult result = prepareDecodingInfo(codes);
   result.encodeddata = encoded;
-  auto it = database.find(key);
-  if (it != database.end()) {
-    // Handle the case where the key is not found
-    std::cerr << "Error: Double Key\n";
-    return;
-  }
+  // auto it = database.find(key);
+  // if (it != database.end()) {
+  //   // Handle the case where the key is not found
+  //   std::cerr << "Error: Double Key\n";
+  //   return;
+  // }
   database[key] = result;
 }
-uint8_t *entrypoint_decode(const float key) {
+uint8_t *entrypoint_decode(const void* key) {
   // Check if the key exists in the database
   auto it = database.find(key);
   if (it == database.end()) {
     // Handle the case where the key is not found
-    std::cerr << "Error: Key not found in database\n";
+    std::cerr << "Error: Key "<<key<<" not found in database\n";
     return nullptr;
   }
   auto data = it->second;
@@ -218,10 +218,10 @@ uint8_t *entrypoint_decode(const float key) {
 }
 
 extern "C" {
-void encoding_c(uint8_t *data, size_t size, const float key) {
+void encoding_c(uint8_t *data, size_t size, const void* key) {
   entrypoint_encode(data, size, key);
 }
-uint8_t *decoding_c(const float key) { return entrypoint_decode(key); }
+uint8_t *decoding_c(const void* key) { return entrypoint_decode(key); }
 #endif
 #ifdef __cplusplus
 }

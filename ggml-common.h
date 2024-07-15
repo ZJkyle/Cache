@@ -173,7 +173,6 @@ typedef struct {
     ggml_half2 dm;
   };
   // uint8_t qs[QK4_ROY / 2]; // nibbles / quants
-  float key;
 } block_q4_roy;
 // static_assert(sizeof(block_q4_roy) == 2 * sizeof(ggml_half) + QK4_ROY / 2,
 //               "wrong q4_roy block size/padding");

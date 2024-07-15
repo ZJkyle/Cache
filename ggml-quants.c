@@ -730,9 +730,6 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
         y[i].m = GGML_FP32_TO_FP16(min);
 
         uint8_t tmp[qk/2];
-        uint32_t key = (uint32_t)GGML_FP32_TO_FP16(d);
-        const uint32_t tmp_m = (uint32_t)GGML_FP32_TO_FP16(min);
-        key |= tmp_m<<16;
         for (int j = 0; j < qk/2; ++j) {
             const float x0 = (x[i*qk + 0    + j] - min)*id;
             const float x1 = (x[i*qk + qk/2 + j] - min)*id;
@@ -745,8 +742,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
             tmp[j] = xi0;
             tmp[j] |= xi1<<4;
         }
-
-        encoding_c(tmp, qk/2, (float)key);
+        encoding_c(tmp, qk/2, y);
     }
 }
 
@@ -4816,8 +4812,11 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
     float sumf = 0.0;
 
     for (int i = 0; i < nb; i++) {
+        if(x[i].d==0) {
+            break;
+        }
         int sumi = 0;
-        uint8_t* data = decoding_c(x[i].key);
+        uint8_t* data = decoding_c((const void*)(x+i));
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);

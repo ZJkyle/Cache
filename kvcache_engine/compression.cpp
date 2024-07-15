@@ -5,10 +5,13 @@
 #include <bitset>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <numeric>
 #include <queue>
+#include <thread>
 #include <unordered_map>
 std::unordered_map<const void *, HuffmanResult> database;
+std::mutex mapMutex;
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -201,6 +204,7 @@ void entrypoint_encode(uint8_t *data, size_t size, const void *key) {
   //   std::cerr << "Error: Double Key\n";
   //   return;
   // }
+  std::lock_guard<std::mutex> guard(mapMutex);
   database[key] = result;
 }
 uint8_t *entrypoint_decode(const void *key) {

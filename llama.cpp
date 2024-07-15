@@ -18123,6 +18123,20 @@ void mmap_cache(const llama_context *ctx){
                 ctx->kv_self.k_l[i]->data = (void*)k_data;
                 break;
             }
+            case GGML_TYPE_Q4_1: {
+                struct block_q4_1* k_data = static_cast<struct block_q4_1*>(mapped_k);
+                memset(k_data, 0, file_size_k);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
+                ctx->kv_self.k_l[i]->data = (void*)k_data;
+                break;
+            }
+            case GGML_TYPE_Q8_1: {
+                struct block_q8_1* k_data = static_cast<struct block_q8_1*>(mapped_k);
+                memset(k_data, 0, file_size_k);
+                cache_ptr_backup.emplace_back(ctx->kv_self.k_l[i]->data);
+                ctx->kv_self.k_l[i]->data = (void*)k_data;
+                break;
+            }
             case GGML_TYPE_F16:{
                 ggml_fp16_t* k_data = static_cast<ggml_fp16_t*>(mapped_k);
                 memset(k_data, 0, file_size_k);

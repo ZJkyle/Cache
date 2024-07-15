@@ -27,11 +27,11 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
   # for debug
   rm -rf build
   cmake -B build -DCMAKE_BUILD_TYPE=Debug -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
-  cmake --build build
+  cmake --build build -j$nproc
   # normal
   rm -rf build
   cmake -B build -DBLAS_LIBRARIES=/usr/lib/x86_64-linux-gnu/libopenblas.so -DLLAMA_BLAS=ON
-  cmake --build build --config Release
+  cmake --build build --config Release -j$nproc
   ```
 
 ### Metal Build

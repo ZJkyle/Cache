@@ -729,20 +729,23 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
         y[i].d = GGML_FP32_TO_FP16(d);
         y[i].m = GGML_FP32_TO_FP16(min);
 
-        uint8_t tmp[qk/2];
-        for (int j = 0; j < qk/2; ++j) {
-            const float x0 = (x[i*qk + 0    + j] - min)*id;
-            const float x1 = (x[i*qk + qk/2 + j] - min)*id;
+        uint8_t tmp[qk];
+        /* for (int j = 0; j < qk/2; ++j) { */
+        /*     const float x0 = (x[i*qk + 0    + j] - min)*id; */
+        /*     const float x1 = (x[i*qk + qk/2 + j] - min)*id; */
 
-            const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-            const uint8_t xi1 = MIN(15, (int8_t)(x1 + 0.5f));
+            /* const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f)); */
+            /* const uint8_t xi1 = MIN(15, (int8_t)(x1 + 0.5f)); */
 
-            // y[i].qs[j]  = xi0;
-            // y[i].qs[j] |= xi1 << 4;
-            tmp[j] = xi0;
-            tmp[j] |= xi1<<4;
+            /* y[i].qs[j]  = xi0; */
+            /* y[i].qs[j] |= xi1 << 4; */
+        /* } */
+        for (int j = 0; j < qk; ++j){
+             const float x0 = (x[i*qk + 0    + j] - min)*id;
+             const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+             tmp[j] = xi0;
         }
-        encoding_c(tmp, qk/2, y);
+        encoding_c(tmp, qk, y+i);
     }
 }
 
@@ -4812,6 +4815,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
     float sumf = 0.0;
 
     for (int i = 0; i < nb; i++) {
+
         if(x[i].d==0) {
             break;
         }
@@ -4820,8 +4824,10 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
-            const int v0 = (data[j] & 0x0F);
-            const int v1 = (data[j] >>   4);
+            /* const int v0 = (data[j] & 0x0F); */
+            /* const int v1 = (data[j] >>   4); */
+            const int v0 = (data[j]);
+            const int v1 = (data[j + qk/2]);
 
             sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk/2]);
         }

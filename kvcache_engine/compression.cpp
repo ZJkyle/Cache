@@ -12,7 +12,10 @@
 #include <unordered_map>
 std::unordered_map<const void *, HuffmanResult> database;
 std::mutex mapMutex;
-
+uint32_t less_cnt = 0;
+uint32_t larger_cnt = 0;
+uint32_t less_original = 0;
+uint32_t larger_original = 0;
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
   std::map<uint8_t, unsigned> freqs;
@@ -206,6 +209,15 @@ void entrypoint_encode(uint8_t *data, size_t size, const void *key) {
   // }
   std::lock_guard<std::mutex> guard(mapMutex);
   database[key] = result;
+  uint8_t s = result.codelengths.size() + result.encodeddata.size() +
+              result.symbols.size();
+  if (s < size / 2) {
+    less_cnt += s;
+    less_original += size / 2;
+  } else {
+    larger_cnt += s;
+    larger_original += size / 2;
+  }
 }
 uint8_t *entrypoint_decode(const void *key) {
   // Check if the key exists in the database

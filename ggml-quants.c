@@ -740,11 +740,12 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
             /* y[i].qs[j]  = xi0; */
             /* y[i].qs[j] |= xi1 << 4; */
         /* } */
-        for (int j = 0; j < qk; ++j){
+        for (int j = 0; j < qk; j++){
              const float x0 = (x[i*qk + 0    + j] - min)*id;
              const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
              tmp[j] = xi0;
         }
+
         encoding_c(tmp, qk, y+i);
     }
 }

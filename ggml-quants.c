@@ -706,7 +706,7 @@ void quantize_row_q4_0(const float * restrict x, void * restrict y, int64_t k) {
 }
 
 // roy-todo
-void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * restrict y, int64_t k, int head_id, int token_id, int layer_id) {
+void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * restrict y, int64_t k, int head_id, int layer_id) {
     const int qk = QK4_ROY;
     assert(k == qk);
     UNUSED(k);
@@ -738,7 +738,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
         /* y[i].qs[j] |= xi1 << 4; */
     /* } */
 
-    uint8_t* tmp_addr = fetch_addr_c(head_id, token_id, layer_id);
+    uint8_t* tmp_addr = fetch_addr_c(head_id, layer_id);
     (*y).backup_addr = tmp_addr;
 
     for (int j = 0; j < qk; j++){
@@ -747,7 +747,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
           (*y).qs[j] = xi0;
           tmp_addr[j] = xi0;
     }
-    store_code_addr_c((*y).code, head_id, token_id, layer_id);
+    store_code_addr_c((*y).code, head_id, layer_id);
     update_token_len_c(head_id, layer_id);
 }
 
@@ -4791,8 +4791,13 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
         int sumi = 0;
         // uint8_t* data = decoding_c((const void*)(x+i));
-        const uint8_t* code_ptr = x[i].code;
-        uint8_t* data = decoding_c(code_ptr);
+        uint8_t* data;
+        if(x[i].code[0]==0 && x[i].code[1]==0 && x[i].code[2]==0){
+          data = x[i].backup_addr;
+        } else{
+          const uint8_t* code_ptr = x[i].code;
+          data = decoding_c(code_ptr);
+        }
 
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
@@ -4806,7 +4811,9 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
 
         sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
-        free(data);
+        if(x[i].code[0]!=0 && x[i].code[1]!=0 && x[i].code[2]!=0){
+          free(data);
+        }
     }
 
     *s = sumf;

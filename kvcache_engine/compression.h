@@ -14,8 +14,8 @@ extern "C" {
 struct Node;
 struct HuffmanResult;
 uint8_t *decoding_c(const uint8_t *code);
-uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id);
-void store_code_addr_c(uint8_t *addr, int head_id, int token_id, int layer_id);
+uint8_t *fetch_addr_c(int head_id, int layer_id);
+void store_code_addr_c(uint8_t *addr, int head_id, int layer_id);
 void update_token_len_c(int head_id, int layer_id);
 #ifdef __cplusplus
 }

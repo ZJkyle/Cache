@@ -8692,7 +8692,7 @@ static void ggml_compute_forward_dup_f32(
                         for (int i01 = ir0; i01 < ir1; i01++) {
                             const float * src0_ptr = (float *) ((char *) src0->data + i01*nb01 + i02*nb02 + i03*nb03);
                             if(dst->type == GGML_TYPE_Q4_ROY){
-                              quantize_row_q4_roy_reference(src0_ptr, (block_q4_roy*)(dst_ptr + id), ne00, i01, i02, layer_id);
+                              quantize_row_q4_roy_reference(src0_ptr, (block_q4_roy*)(dst_ptr + id), ne00, i01, layer_id);
                             }else{
                               quantize_row_q(src0_ptr, dst_ptr + id, ne00);
                             }

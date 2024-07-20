@@ -237,8 +237,8 @@ uint8_t *entrypoint_decode(const uint8_t *code) {
 
 extern "C" {
 uint8_t *decoding_c(const uint8_t *code) { return entrypoint_decode(code); }
-uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id) {
-  unsigned int abs_token_id = cur_tokens[layer_id][head_id] + token_id;
+uint8_t *fetch_addr_c(int head_id, int layer_id) {
+  unsigned int abs_token_id = cur_tokens[layer_id][head_id];
   unsigned int index = layer_id * (heads * block_size * tokens) +
                        head_id * (block_size * tokens) +
                        abs_token_id * block_size;
@@ -246,9 +246,10 @@ uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id) {
   return tmp_quantized_data + index;
 }
 
-void store_code_addr_c(uint8_t *addr, int head_id, int token_id, int layer_id) {
+void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
+  unsigned int abs_token_id = cur_tokens[layer_id][head_id];
   unsigned int index =
-      layer_id * (heads * tokens) + head_id * tokens + token_id;
+      layer_id * (heads * tokens) + head_id * tokens + abs_token_id;
   backup_addr[index] = addr;
 }
 

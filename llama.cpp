@@ -18102,7 +18102,7 @@ void mmap_cache(const llama_context *ctx){
 
     for (int i = 0; i < 32; i++) {
         std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
-        size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
+        size_t file_size_k = 8 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
         int fd_k;
         void* mapped_k = mapFileToMemory(filename_k, file_size_k, fd_k);
         if (mapped_k == MAP_FAILED) {

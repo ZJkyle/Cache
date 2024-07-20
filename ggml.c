@@ -915,7 +915,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .is_quantized             = true,
         .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
         .from_float               = quantize_row_q4_roy,
-        .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy_reference,
+        .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy,
         .vec_dot                  = ggml_vec_dot_q4_roy_q8_roy,
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
@@ -8616,6 +8616,13 @@ static void ggml_compute_forward_dup_f32(
         return;
     }
 
+    int layer_id;
+    if(dst->name[14] == ' '){
+      layer_id = dst->name[13] - '0';
+    }else{
+      layer_id = 10 * (dst->name[13] - '0') + dst->name[14] - '0';
+    }
+
     GGML_TENSOR_UNARY_OP_LOCALS
 
     const int ith = params->ith; // thread index
@@ -8684,7 +8691,11 @@ static void ggml_compute_forward_dup_f32(
                         // one thread process row ir0 ~ ir1
                         for (int i01 = ir0; i01 < ir1; i01++) {
                             const float * src0_ptr = (float *) ((char *) src0->data + i01*nb01 + i02*nb02 + i03*nb03);
-                            quantize_row_q(src0_ptr, dst_ptr + id, ne00);
+                            if(dst->type == GGML_TYPE_Q4_ROY){
+                              quantize_row_q4_roy_reference(src0_ptr, (block_q4_roy*)(dst_ptr + id), ne00, i01, i02, layer_id);
+                            }else{
+                              quantize_row_q(src0_ptr, dst_ptr + id, ne00);
+                            }
                             id += rs;
                         }
                         id += rs * (ne01 - ir1);

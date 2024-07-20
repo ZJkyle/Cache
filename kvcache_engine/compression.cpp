@@ -5,17 +5,21 @@
 #include <bitset>
 #include <functional>
 #include <iostream>
-#include <mutex>
 #include <numeric>
 #include <queue>
-#include <thread>
-#include <unordered_map>
-std::unordered_map<const void *, HuffmanResult> database;
-std::mutex mapMutex;
-uint32_t less_cnt = 0;
-uint32_t larger_cnt = 0;
-uint32_t less_original = 0;
-uint32_t larger_original = 0;
+
+const uint8_t block_size = 128;
+const uint8_t layers = 32;
+const uint8_t heads = 8;
+const uint8_t tokens = 32;
+const uint32_t tmp_quantized_data_size = block_size * layers * heads * tokens;
+const uint32_t backup_addr_size = layers * heads * tokens;
+
+// 1 layer / 1 head is assigned to a thread
+uint8_t cur_tokens[layers][heads] = {{0}};
+uint8_t *backup_addr[backup_addr_size] = {0};
+uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
+
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
   std::map<uint8_t, unsigned> freqs;
@@ -90,31 +94,33 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
   return canonicalCodes;
 }
 
-std::vector<uint8_t> encode(uint8_t *data, size_t size,
-                            const std::map<uint8_t, std::string> &codes) {
-  std::string bitstring;
-  for (size_t i = 0; i < size; i++) {
-    bitstring += codes.at(data[i]);
-  }
+void encode(uint8_t *data, size_t size,
+            const std::map<uint8_t, std::string> &codes, uint8_t **addr) {
+  for (int t = 0; t < tokens; t++) {
+    std::string bitstring;
+    for (size_t i = 0; i < size; i++) {
+      bitstring += codes.at(data[t * size + i]);
+    }
 
-  std::vector<uint8_t> encoded;
-  uint8_t current_byte = 0;
-  int bit_count = 0;
+    uint8_t *encoded = *(addr + t);
+    uint8_t current_byte = 0;
+    int bit_count = 0;
+    int idx_cnt = 0;
 
-  for (auto bit = bitstring.begin(); bit != bitstring.end(); ++bit) {
-    current_byte = (current_byte << 1) | (*bit - '0');
-    bit_count++;
-    if (bit_count == 8) {
-      encoded.push_back(current_byte);
-      current_byte = 0;
-      bit_count = 0;
+    for (auto bit = bitstring.begin(); bit != bitstring.end(); ++bit) {
+      current_byte = (current_byte << 1) | (*bit - '0');
+      bit_count++;
+      if (bit_count == 8) {
+        encoded[idx_cnt++] = current_byte;
+        current_byte = 0;
+        bit_count = 0;
+      }
+    }
+    if (bit_count > 0) {
+      current_byte <<= (8 - bit_count);
+      encoded[idx_cnt] = current_byte;
     }
   }
-  if (bit_count > 0) {
-    current_byte <<= (8 - bit_count);
-    encoded.push_back(current_byte);
-  }
-  return encoded;
 }
 
 HuffmanResult
@@ -194,50 +200,58 @@ uint8_t *decodeHuffman(const std::vector<uint8_t> &encodedData,
   return decodedData;
 }
 
-void entrypoint_encode(uint8_t *data, size_t size, const void *key) {
+void entrypoint_encode(int head_id, int layer_id) {
+  uint32_t quantized_data_index =
+      layer_id * (block_size * heads * tokens) + head_id * heads;
+  int size = block_size;
+  uint8_t *data = tmp_quantized_data + quantized_data_index;
+
   auto freq = generateFrequencyTable(data, size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
-  auto encoded = encode(data, size, codes);
+
+  uint32_t backup_addr_index = layer_id * heads + head_id;
+  uint8_t **code = backup_addr + backup_addr_index;
+
+  encode(data, size, codes, code);
   HuffmanResult result = prepareDecodingInfo(codes);
   result.encodeddata = encoded;
-  // auto it = database.find(key);
-  // if (it != database.end()) {
-  //   // Handle the case where the key is not found
-  //   std::cerr << "Error: Double Key\n";
-  //   return;
-  // }
-  std::lock_guard<std::mutex> guard(mapMutex);
-  database[key] = result;
-  uint8_t s = result.codelengths.size() + result.encodeddata.size() +
-              result.symbols.size();
-  if (s < size / 2) {
-    less_cnt += s;
-    less_original += size / 2;
-  } else {
-    larger_cnt += s;
-    larger_original += size / 2;
-  }
+  // database[key] = result;
 }
 uint8_t *entrypoint_decode(const void *key) {
   // Check if the key exists in the database
-  auto it = database.find(key);
-  if (it == database.end()) {
-    // Handle the case where the key is not found
-    std::cerr << "Error: Key " << key << " not found in database\n";
-    return nullptr;
-  }
-  auto data = it->second;
-  auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
-  auto originalData = decodeHuffman(data.encodeddata, huffmanCodes);
-  return originalData;
+  // auto data = it->second;
+  // auto huffmanCodes = reconstructHuffmanCodes(data.symbols,
+  // data.codelengths); auto originalData = decodeHuffman(data.encodeddata,
+  // huffmanCodes);
+  return NULL;
 }
 
 extern "C" {
-void encoding_c(uint8_t *data, size_t size, const void *key) {
-  entrypoint_encode(data, size, key);
-}
 uint8_t *decoding_c(const void *key) { return entrypoint_decode(key); }
+uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id) {
+  unsigned int abs_token_id = cur_tokens[layer_id][head_id] + token_id;
+  unsigned int index = layer_id * (heads * block_size * tokens) +
+                       head_id * (block_size * tokens) +
+                       abs_token_id * block_size;
+
+  return tmp_quantized_data + index;
+}
+
+void store_code_addr_c(uint8_t *addr, int head_id, int token_id, int layer_id) {
+  unsigned int index =
+      layer_id * (heads * tokens) + head_id * tokens + token_id;
+  backup_addr[index] = addr;
+}
+
+void update_token_len_c(int head_id, int layer_id) {
+  cur_tokens[layer_id][head_id] += 1;
+  if (cur_tokens[layer_id][head_id] == tokens) {
+    entrypoint_encode(head_id, layer_id);
+    cur_tokens[layer_id][head_id] = 0;
+  }
+}
+
 #endif
 #ifdef __cplusplus
 }

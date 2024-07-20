@@ -13,9 +13,10 @@ extern "C" {
 #endif
 struct Node;
 struct HuffmanResult;
-void encoding_c(uint8_t *data, size_t size, const void* key);
-uint8_t *decoding_c(const void* key);
-
+uint8_t *decoding_c(const void *key);
+uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id);
+void store_code_addr_c(uint8_t *addr, int head_id, int token_id, int layer_id);
+void update_token_len_c(int head_id, int layer_id);
 #ifdef __cplusplus
 }
 
@@ -40,8 +41,8 @@ std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
 
 HuffmanResult
 prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes);
-std::vector<uint8_t> encode(uint8_t *data, size_t size,
-                            const std::map<uint8_t, std::string> &codes);
+void encode(uint8_t *data, size_t size,
+            const std::map<uint8_t, std::string> &codes, uint8_t **addr);
 Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs);
 std::map<uint8_t, std::string> generateCanonicalCodes(Node *root);
 std::vector<uint8_t> decode(const std::vector<uint8_t> &encoded, Node *root,
@@ -52,7 +53,7 @@ std::map<std::string, uint8_t>
 reconstructHuffmanCodes(const std::vector<uint8_t> &symbols,
                         const std::vector<uint8_t> &codeLengths);
 
-void entrypoint_encode(uint8_t *data, size_t size, const void* key);
-uint8_t *entrypoint_decode(const void* key);
+void entrypoint_encode(uint8_t *data, size_t size, const void *key);
+uint8_t *entrypoint_decode(const void *key);
 #endif // __cplusplus
 #endif // COMPRESSION_H

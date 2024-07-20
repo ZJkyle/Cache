@@ -174,7 +174,7 @@ typedef struct {
   };
   uint8_t qs[QK4_ROY];
   uint8_t *backup_addr;
-  uint8_t code[50];
+  uint8_t code[200];
 } block_q4_roy;
 
 #define QK8_ROY 128

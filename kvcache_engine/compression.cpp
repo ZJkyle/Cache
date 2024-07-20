@@ -1,15 +1,17 @@
 #include <cstdint>
 #include <cstdlib>
-#include <unordered_map>
 #ifdef __cplusplus
 #include "compression.h"
 #include <algorithm>
 #include <bitset>
 #include <functional>
 #include <iostream>
+#include <mutex>
 #include <numeric>
 #include <queue>
+#include <unordered_map>
 
+std::mutex mtx;
 const uint8_t block_size = 128;
 const uint8_t layers = 32;
 const uint8_t heads = 8;
@@ -19,7 +21,7 @@ const uint32_t backup_addr_size = layers * heads * tokens;
 
 // 1 layer / 1 head is assigned to a thread
 uint8_t cur_tokens[layers][heads] = {{0}};
-uint8_t *backup_addr[backup_addr_size] = {0};
+uint8_t *code_addr[backup_addr_size] = {0};
 uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
 
 std::unordered_map<const uint8_t *, struct HuffmanResult> huffmantable;
@@ -122,7 +124,10 @@ void encode(uint8_t *data, size_t size,
     }
     if (bit_count > 0) {
       current_byte <<= (8 - bit_count);
-      encoded[idx_cnt] = current_byte;
+      encoded[idx_cnt++] = current_byte;
+    }
+    if (idx_cnt > 200) {
+      abort();
     }
   }
 }
@@ -204,20 +209,19 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
 }
 
 void entrypoint_encode(int head_id, int layer_id) {
-  uint32_t quantized_data_index =
-      layer_id * (block_size * heads * tokens) + head_id * heads;
+  uint32_t index = layer_id * (block_size * heads * tokens) + head_id * heads;
   int size = block_size;
-  uint8_t *data = tmp_quantized_data + quantized_data_index;
+  uint8_t *data = tmp_quantized_data + index;
 
   auto freq = generateFrequencyTable(data, size * tokens);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
 
-  uint32_t backup_addr_index = layer_id * heads + head_id;
-  uint8_t **b_addr = backup_addr + backup_addr_index;
+  uint8_t **b_addr = code_addr + index;
 
   encode(data, size, codes, b_addr);
   HuffmanResult result = prepareDecodingInfo(codes);
+  std::lock_guard<std::mutex> lock(mtx);
   for (int i = 0; i < tokens; i++) {
     huffmantable[*(b_addr + i)] = result;
   }
@@ -250,7 +254,7 @@ void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
   unsigned int abs_token_id = cur_tokens[layer_id][head_id];
   unsigned int index =
       layer_id * (heads * tokens) + head_id * tokens + abs_token_id;
-  backup_addr[index] = addr;
+  code_addr[index] = addr;
 }
 
 void update_token_len_c(int head_id, int layer_id) {

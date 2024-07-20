@@ -747,7 +747,8 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
           (*y).qs[j] = xi0;
           tmp_addr[j] = xi0;
     }
-    store_code_addr_c((*y).code, head_id, layer_id);
+    uint8_t* code_addr = (*y).code;
+    store_code_addr_c(code_addr, head_id, layer_id);
     update_token_len_c(head_id, layer_id);
 }
 
@@ -4773,7 +4774,7 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
     const int qk = QK8_ROY;
     const int nb = n / qk;
-
+    bool flag = false;
     assert(n % qk == 0);
     UNUSED(nrc);
     UNUSED(bx);
@@ -4794,6 +4795,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         uint8_t* data;
         if(x[i].code[0]==0 && x[i].code[1]==0 && x[i].code[2]==0){
           data = x[i].backup_addr;
+          flag = true;
         } else{
           const uint8_t* code_ptr = x[i].code;
           data = decoding_c(code_ptr);
@@ -4802,10 +4804,12 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
-            assert(x[i].backup_addr[j] == x[i].qs[j]);
-            assert(data[j] == x[i].qs[j]);
-            const int v0 = (x[i].qs[j]);
-            const int v1 = (x[i].qs[j + qk/2]);
+            if(data[j]!=x[i].qs[j]){
+
+              abort();
+            }
+            const int v0 = (data[j]);
+            const int v1 = (data[j + qk/2]);
 
             sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk/2]);
         }

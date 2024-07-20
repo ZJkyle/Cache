@@ -744,6 +744,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
     for (int j = 0; j < qk; j++){
           const float x0 = (x[j] - min)*id;
           const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+          (*y).qs[j] = xi0;
           tmp_addr[j] = xi0;
     }
     store_code_addr_c((*y).code, head_id, token_id, layer_id);
@@ -4790,11 +4791,14 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
         int sumi = 0;
         // uint8_t* data = decoding_c((const void*)(x+i));
+        const uint8_t* code_ptr = x[i].code;
+        uint8_t* data = decoding_c(code_ptr);
 
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
             assert(x[i].backup_addr[j] == x[i].qs[j]);
+            assert(data[j] == x[i].qs[j]);
             const int v0 = (x[i].qs[j]);
             const int v1 = (x[i].qs[j + qk/2]);
 
@@ -4802,10 +4806,10 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
 
         sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
+        free(data);
     }
 
     *s = sumf;
-
 }
 
 void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {

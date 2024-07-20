@@ -1,4 +1,6 @@
 #include <cstdint>
+#include <cstdlib>
+#include <unordered_map>
 #ifdef __cplusplus
 #include "compression.h"
 #include <algorithm>
@@ -19,6 +21,8 @@ const uint32_t backup_addr_size = layers * heads * tokens;
 uint8_t cur_tokens[layers][heads] = {{0}};
 uint8_t *backup_addr[backup_addr_size] = {0};
 uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
+
+std::unordered_map<const uint8_t *, struct HuffmanResult> huffmantable;
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -176,27 +180,26 @@ reconstructHuffmanCodes(const std::vector<uint8_t> &symbols,
   return huffmanCodes;
 }
 
-uint8_t *decodeHuffman(const std::vector<uint8_t> &encodedData,
+uint8_t *decodeHuffman(const uint8_t *encodedData,
                        const std::map<std::string, uint8_t> &huffmanCodes) {
   std::string currentCode;
-  std::vector<uint8_t> tempDecoded; // Temporarily store decoded data
+  uint8_t *decodedData = (uint8_t *)malloc(block_size * sizeof(uint8_t));
+  uint8_t data_cnt = 0;
+  uint8_t outer_idx = 0;
 
-  for (uint8_t byte : encodedData) {
-    for (int i = 7; i >= 0; --i) {
+  while (data_cnt < block_size) {
+    uint8_t byte = encodedData[outer_idx++];
+    for (int i = 7; i >= 0 && data_cnt < block_size; --i) {
       currentCode.push_back(((byte >> i) & 1) ? '1' : '0');
       if (huffmanCodes.count(currentCode)) {
-        tempDecoded.push_back(huffmanCodes.at(currentCode));
+        decodedData[data_cnt++] = huffmanCodes.at(currentCode);
         currentCode.clear();
       }
     }
+    if (data_cnt >= block_size) {
+      break;
+    }
   }
-  size_t decodedSize = tempDecoded.size();
-  uint8_t *decodedData =
-      new uint8_t[decodedSize]; // Allocate the array dynamically
-
-  // Copy from vector to allocated array
-  std::copy(tempDecoded.begin(), tempDecoded.end(), decodedData);
-
   return decodedData;
 }
 
@@ -206,29 +209,34 @@ void entrypoint_encode(int head_id, int layer_id) {
   int size = block_size;
   uint8_t *data = tmp_quantized_data + quantized_data_index;
 
-  auto freq = generateFrequencyTable(data, size);
+  auto freq = generateFrequencyTable(data, size * tokens);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
 
   uint32_t backup_addr_index = layer_id * heads + head_id;
-  uint8_t **code = backup_addr + backup_addr_index;
+  uint8_t **b_addr = backup_addr + backup_addr_index;
 
-  encode(data, size, codes, code);
+  encode(data, size, codes, b_addr);
   HuffmanResult result = prepareDecodingInfo(codes);
-  result.encodeddata = encoded;
-  // database[key] = result;
+  for (int i = 0; i < tokens; i++) {
+    huffmantable[*(b_addr + i)] = result;
+  }
 }
-uint8_t *entrypoint_decode(const void *key) {
+uint8_t *entrypoint_decode(const uint8_t *code) {
   // Check if the key exists in the database
-  // auto data = it->second;
-  // auto huffmanCodes = reconstructHuffmanCodes(data.symbols,
-  // data.codelengths); auto originalData = decodeHuffman(data.encodeddata,
-  // huffmanCodes);
-  return NULL;
+  auto it = huffmantable.find(code);
+  if (it == huffmantable.end()) {
+    std::cout << "key not found" << std::endl;
+    abort();
+  }
+  auto data = it->second;
+  auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
+  auto originalData = decodeHuffman(code, huffmanCodes);
+  return originalData;
 }
 
 extern "C" {
-uint8_t *decoding_c(const void *key) { return entrypoint_decode(key); }
+uint8_t *decoding_c(const uint8_t *code) { return entrypoint_decode(code); }
 uint8_t *fetch_addr_c(int head_id, int token_id, int layer_id) {
   unsigned int abs_token_id = cur_tokens[layer_id][head_id] + token_id;
   unsigned int index = layer_id * (heads * block_size * tokens) +

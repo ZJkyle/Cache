@@ -6,26 +6,26 @@
 #include <bitset>
 #include <functional>
 #include <iostream>
-#include <mutex>
 #include <numeric>
 #include <queue>
-#include <unordered_map>
 
-std::mutex mtx;
 const uint8_t block_size = 128;
 const uint8_t layers = 32;
 const uint8_t heads = 8;
-const uint8_t tokens = 32;
-const uint32_t tmp_quantized_data_size = block_size * layers * heads * tokens;
-const uint32_t backup_addr_size = layers * heads * tokens;
+const uint8_t token_group_size = 32;
+const uint32_t kv_size = 512;
+const uint32_t token_groups = kv_size / token_group_size;
+const uint32_t tmp_quantized_data_size =
+    block_size * layers * heads * token_group_size;
+const uint32_t backup_addr_size = layers * heads * token_group_size;
+const uint32_t huffmantable_size = layers * heads * token_groups;
 
 // 1 layer / 1 head is assigned to a thread
 uint8_t cur_tokens[layers][heads] = {{0}};
+uint64_t total_tokens[layers][heads] = {{0}};
 uint8_t *code_addr[backup_addr_size] = {0};
 uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
-// uint8_t *coded_flag[backup_addr_size] = {0};
-
-std::unordered_map<const uint8_t *, struct HuffmanResult> huffmantable;
+struct HuffmanResult huffmantable[huffmantable_size];
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -103,7 +103,7 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
 
 void encode(uint8_t *data, size_t size,
             const std::map<uint8_t, std::string> &codes, uint8_t **addr) {
-  for (int t = 0; t < tokens; t++) {
+  for (int t = 0; t < token_group_size; t++) {
     std::string bitstring;
     for (size_t i = 0; i < size; i++) {
       bitstring += codes.at(data[t * size + i]);
@@ -127,23 +127,29 @@ void encode(uint8_t *data, size_t size,
       current_byte <<= (8 - bit_count);
       encoded[idx_cnt++] = current_byte;
     }
-    if (idx_cnt > 200) {
+    if (idx_cnt > 100) {
       abort();
     }
   }
 }
 
-HuffmanResult
-prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes) {
+void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
+                         HuffmanResult &table) {
+  // Temporary local variable to process data
   HuffmanResult info;
+
+  int iter = 0;
   for (const auto &pair : canonicalCodes) {
-    info.symbols.push_back(pair.first);
-    info.codelengths.push_back(pair.second.length());
+    if (iter < 16) { // Ensure we don't overflow the fixed size arrays
+      info.symbols[iter] = pair.first;
+      info.codelengths[iter] = static_cast<uint8_t>(pair.second.length());
+      ++iter;
+    }
   }
 
   // Sort symbols by their code lengths (and lexicographically within the same
   // length)
-  std::vector<size_t> indices(info.symbols.size());
+  std::vector<size_t> indices(16); // Fixed size known from HuffmanResult
   std::iota(indices.begin(), indices.end(), 0);
   std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
     return info.codelengths[i] < info.codelengths[j] ||
@@ -151,27 +157,32 @@ prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes) {
             info.symbols[i] < info.symbols[j]);
   });
 
-  std::vector<uint8_t> sortedSymbols(info.symbols.size());
-  std::vector<uint8_t> sortedCodeLengths(info.codelengths.size());
-  for (size_t i = 0; i < indices.size(); ++i) {
+  // Copy sorted data back into the info struct to return
+  uint8_t sortedSymbols[16];
+  uint8_t sortedCodeLengths[16];
+  for (size_t i = 0; i < 16; ++i) {
     sortedSymbols[i] = info.symbols[indices[i]];
     sortedCodeLengths[i] = info.codelengths[indices[i]];
   }
-  info.symbols = std::move(sortedSymbols);
-  info.codelengths = std::move(sortedCodeLengths);
 
-  return info;
+  // Copy the sorted arrays back to the original structure
+  std::copy(std::begin(sortedSymbols), std::end(sortedSymbols),
+            std::begin(info.symbols));
+  std::copy(std::begin(sortedCodeLengths), std::end(sortedCodeLengths),
+            std::begin(info.codelengths));
+
+  // Copy to output parameter
+  table = info;
 }
 
 // Reconstruct the canonical Huffman codes from the symbol and code lengths
-std::map<std::string, uint8_t>
-reconstructHuffmanCodes(const std::vector<uint8_t> &symbols,
-                        const std::vector<uint8_t> &codeLengths) {
+std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
+                                                       uint8_t *codeLengths) {
   std::map<std::string, uint8_t> huffmanCodes;
   int code = 0;
   int previousLength = 0;
 
-  for (size_t i = 0; i < symbols.size(); ++i) {
+  for (size_t i = 0; i < 16; ++i) {
     if (previousLength != 0 && codeLengths[i] > previousLength) {
       code <<= (codeLengths[i] - previousLength);
     }
@@ -206,67 +217,67 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
   return decodedData;
 }
 
-void entrypoint_encode(int head_id, int layer_id) {
-  uint32_t q_idx = layer_id * (block_size * heads * tokens) +
-                   head_id * (tokens * block_size);
-  uint32_t code_idx = layer_id * (heads * tokens) + head_id * tokens;
+void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
+  uint32_t q_idx = layer_id * (block_size * heads * token_group_size) +
+                   head_id * (token_group_size * block_size);
+  uint32_t code_idx =
+      layer_id * (heads * token_group_size) + head_id * token_group_size;
+  uint64_t table_idx = layer_id * (heads * token_groups) +
+                       head_id * token_groups + abs_token_id / token_group_size;
   uint8_t *data = tmp_quantized_data + q_idx;
 
-  auto freq = generateFrequencyTable(data, block_size * tokens);
+  auto freq = generateFrequencyTable(data, block_size * token_group_size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
 
   uint8_t **b_addr = code_addr + code_idx;
-
   encode(data, block_size, codes, b_addr);
-  HuffmanResult result = prepareDecodingInfo(codes);
-  std::lock_guard<std::mutex> lock(mtx);
-  for (int i = 0; i < tokens; i++) {
-    huffmantable[*(b_addr + i)] = result;
-  }
+  prepareDecodingInfo(codes, huffmantable[table_idx]);
 }
-uint8_t *entrypoint_decode(const uint8_t *code) {
-  // Check if the key exists in the database
-  auto it = huffmantable.find(code);
-  if (it == huffmantable.end()) {
-    std::cout << "key not found" << std::endl;
-    abort();
-  }
-  auto data = it->second;
+uint8_t *entrypoint_decode(const uint8_t *code, int64_t token_id,
+                           int64_t head_id, int64_t layer_id) {
+  int64_t index = layer_id * (heads * token_groups) + head_id * token_groups +
+                  token_id / token_group_size;
+  auto data = huffmantable[index];
   auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
   auto originalData = decodeHuffman(code, huffmanCodes);
   return originalData;
 }
 
 extern "C" {
-uint8_t *decoding_c(const uint8_t *code) { return entrypoint_decode(code); }
+uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
+                    int64_t layer_id) {
+  return entrypoint_decode(code, token_id, head_id, layer_id);
+}
 uint8_t *encode_fetch_addr_c(int head_id, int layer_id) {
   unsigned int abs_token_id = cur_tokens[layer_id][head_id];
-  unsigned int index = layer_id * (heads * block_size * tokens) +
-                       head_id * (block_size * tokens) +
+  unsigned int index = layer_id * (heads * block_size * token_group_size) +
+                       head_id * (block_size * token_group_size) +
                        abs_token_id * block_size;
 
   return tmp_quantized_data + index;
 }
 uint8_t *decode_fetch_addr_c(int64_t token_id, int64_t head_id,
                              int64_t layer_id) {
-  unsigned int index = layer_id * (heads * block_size * tokens) +
-                       head_id * (block_size * tokens) + token_id * block_size;
+  unsigned int index = layer_id * (heads * block_size * token_group_size) +
+                       head_id * (block_size * token_group_size) +
+                       token_id * block_size;
 
   return tmp_quantized_data + index;
 }
 
 void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
   unsigned int abs_token_id = cur_tokens[layer_id][head_id];
-  unsigned int index =
-      layer_id * (heads * tokens) + head_id * tokens + abs_token_id;
+  unsigned int index = layer_id * (heads * token_group_size) +
+                       head_id * token_group_size + abs_token_id;
   code_addr[index] = addr;
 }
 
 void update_token_len_c(int head_id, int layer_id) {
   cur_tokens[layer_id][head_id] += 1;
-  if (cur_tokens[layer_id][head_id] == tokens) {
-    entrypoint_encode(head_id, layer_id);
+  total_tokens[layer_id][head_id] += 1;
+  if (cur_tokens[layer_id][head_id] == token_group_size) {
+    entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id, layer_id);
     cur_tokens[layer_id][head_id] = 0;
   }
 }

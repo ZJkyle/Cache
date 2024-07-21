@@ -4792,24 +4792,25 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         int sumi = 0;
         uint8_t* data;
         uint8_t tmp = 0;
-        for(int iter=0; iter<200; iter++){
+        for(int iter=0; iter<100; iter++){
           tmp |= x[iter].code[iter];
         }
         if(!tmp){
           data = x[i].backup_addr;
           if(data != decode_fetch_addr_c(token_id, head_id, layer_id)){
+            // addr error;
             abort();
           }
         } else{
           const uint8_t* code_ptr = x[i].code;
-          data = decoding_c(code_ptr);
+          data = decoding_c(code_ptr, token_id, head_id, layer_id);
         }
 
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
             if(data[j]!=x[i].qs[j]){
-
+              // decode error;
               abort();
             }
             const int v0 = (data[j]);

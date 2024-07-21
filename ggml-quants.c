@@ -738,7 +738,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
         /* y[i].qs[j] |= xi1 << 4; */
     /* } */
 
-    uint8_t* tmp_addr = fetch_addr_c(head_id, layer_id);
+    uint8_t* tmp_addr = encode_fetch_addr_c(head_id, layer_id);
     (*y).backup_addr = tmp_addr;
 
     for (int j = 0; j < qk; j++){
@@ -4771,7 +4771,7 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 }
 
 // roy-todo
-void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
+void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc, int64_t token_id, int64_t head_id, int64_t layer_id) {
     const int qk = QK8_ROY;
     const int nb = n / qk;
     assert(n % qk == 0);
@@ -4790,7 +4790,6 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
             break;
         }
         int sumi = 0;
-        // uint8_t* data = decoding_c((const void*)(x+i));
         uint8_t* data;
         uint8_t tmp = 0;
         for(int iter=0; iter<200; iter++){
@@ -4798,6 +4797,9 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
         if(!tmp){
           data = x[i].backup_addr;
+          if(data != decode_fetch_addr_c(token_id, head_id, layer_id)){
+            abort();
+          }
         } else{
           const uint8_t* code_ptr = x[i].code;
           data = decoding_c(code_ptr);

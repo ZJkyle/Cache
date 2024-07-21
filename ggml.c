@@ -916,7 +916,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
         .from_float               = quantize_row_q4_roy,
         .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy,
-        .vec_dot                  = ggml_vec_dot_q4_roy_q8_roy,
+        .vec_dot                  = ggml_vec_dot_q4_1_q8_1,
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
         .nrows                    = 2,
@@ -12410,6 +12410,13 @@ static void ggml_compute_forward_mul_mat_one_chunk(
     // 16 * 2, accounting for mmla kernels
     float tmp[32];
 
+    int64_t layer_id;
+    if(dst->name[4] == '\0'){
+      layer_id = dst->name[3]-'0';
+    }else{
+      layer_id = 10 * (dst->name[3]-'0') + dst->name[4]-'0';
+    }
+
     for (int64_t iir1 = ir1_start; iir1 < ir1_end; iir1 += blck_1) {
         for (int64_t iir0 = ir0_start; iir0 < ir0_end; iir0 += blck_0) {
             for (int64_t ir1 = iir1; ir1 < iir1 + blck_1 && ir1 < ir1_end; ir1 += num_rows_per_vec_dot) {
@@ -12442,7 +12449,11 @@ static void ggml_compute_forward_mul_mat_one_chunk(
                 //}
 
                 for (int64_t ir0 = iir0; ir0 < iir0 + blck_0 && ir0 < ir0_end; ir0 += num_rows_per_vec_dot) {
-                    vec_dot(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot);
+                    if(src0->type == GGML_TYPE_Q4_ROY){
+                      ggml_vec_dot_q4_roy_q8_roy(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot, ir0, i02, layer_id);
+                    }else{
+                      vec_dot(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot);
+                    }
                 }
 
                 for (int cn = 0; cn < num_rows_per_vec_dot; ++cn) {

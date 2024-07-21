@@ -148,7 +148,8 @@ void ggml_vec_dot_q4_0_q8_0(int n, float *GGML_RESTRICT s, size_t bs,
 void ggml_vec_dot_q4_roy_q8_roy(int n, float *GGML_RESTRICT s, size_t bs,
                                 const void *GGML_RESTRICT vx, size_t bx,
                                 const void *GGML_RESTRICT vy, size_t by,
-                                int nrc);
+                                int nrc, int64_t token_id, int64_t head_id,
+                                int64_t layer_id);
 void ggml_vec_dot_q4_1_q8_1(int n, float *GGML_RESTRICT s, size_t bs,
                             const void *GGML_RESTRICT vx, size_t bx,
                             const void *GGML_RESTRICT vy, size_t by, int nrc);

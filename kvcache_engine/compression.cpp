@@ -128,6 +128,7 @@ void encode(uint8_t *data, size_t size,
       encoded[idx_cnt++] = current_byte;
     }
     if (idx_cnt > 100) {
+      // too long;
       abort();
     }
   }
@@ -138,6 +139,10 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
   // Temporary local variable to process data
   HuffmanResult info;
 
+  // Initialize all elements to a safe value, assuming 0 is safe
+  std::fill(std::begin(info.symbols), std::end(info.symbols), 0);
+  std::fill(std::begin(info.codelengths), std::end(info.codelengths), 0);
+
   int iter = 0;
   for (const auto &pair : canonicalCodes) {
     if (iter < 16) { // Ensure we don't overflow the fixed size arrays
@@ -147,9 +152,8 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
     }
   }
 
-  // Sort symbols by their code lengths (and lexicographically within the same
-  // length)
-  std::vector<size_t> indices(16); // Fixed size known from HuffmanResult
+  // Sort only the populated portion of the arrays
+  std::vector<size_t> indices(iter); // Use actual number of elements
   std::iota(indices.begin(), indices.end(), 0);
   std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
     return info.codelengths[i] < info.codelengths[j] ||
@@ -160,7 +164,7 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
   // Copy sorted data back into the info struct to return
   uint8_t sortedSymbols[16];
   uint8_t sortedCodeLengths[16];
-  for (size_t i = 0; i < 16; ++i) {
+  for (size_t i = 0; i < indices.size(); ++i) {
     sortedSymbols[i] = info.symbols[indices[i]];
     sortedCodeLengths[i] = info.codelengths[indices[i]];
   }
@@ -174,7 +178,6 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
   // Copy to output parameter
   table = info;
 }
-
 // Reconstruct the canonical Huffman codes from the symbol and code lengths
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths) {
@@ -234,12 +237,12 @@ void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
   encode(data, block_size, codes, b_addr);
   prepareDecodingInfo(codes, huffmantable[table_idx]);
 }
-uint8_t *entrypoint_decode(const uint8_t *code, int64_t token_id,
+uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                            int64_t head_id, int64_t layer_id) {
-  int64_t index = layer_id * (heads * token_groups) + head_id * token_groups +
-                  token_id / token_group_size;
-  auto data = huffmantable[index];
-  auto huffmanCodes = reconstructHuffmanCodes(data.symbols, data.codelengths);
+  int64_t table_idx = layer_id * (heads * token_groups) +
+                      head_id * token_groups + abs_token_id / token_group_size;
+  auto huffmanCodes = reconstructHuffmanCodes(
+      huffmantable[table_idx].symbols, huffmantable[table_idx].codelengths);
   auto originalData = decodeHuffman(code, huffmanCodes);
   return originalData;
 }
@@ -261,7 +264,7 @@ uint8_t *decode_fetch_addr_c(int64_t token_id, int64_t head_id,
                              int64_t layer_id) {
   unsigned int index = layer_id * (heads * block_size * token_group_size) +
                        head_id * (block_size * token_group_size) +
-                       token_id * block_size;
+                       (token_id % token_group_size) * block_size;
 
   return tmp_quantized_data + index;
 }

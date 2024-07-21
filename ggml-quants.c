@@ -4795,9 +4795,12 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         for(int iter=0; iter<100; iter++){
           tmp |= x[iter].code[iter];
         }
+        bool flag = false;
         if(!tmp){
+          flag = true;
           data = x[i].backup_addr;
-          if(data != decode_fetch_addr_c(token_id, head_id, layer_id)){
+          uint8_t* tmp_ptr =  decode_fetch_addr_c(token_id, head_id, layer_id);
+          if(data != tmp_ptr){
             // addr error;
             abort();
           }

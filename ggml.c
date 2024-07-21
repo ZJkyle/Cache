@@ -916,7 +916,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
         .from_float               = quantize_row_q4_roy,
         .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy,
-        .vec_dot                  = ggml_vec_dot_q4_1_q8_1,
+        // .vec_dot                  = ggml_vec_dot_q4_0_q8_0,
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
         .nrows                    = 2,

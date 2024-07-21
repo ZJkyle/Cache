@@ -51,7 +51,7 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths);
 void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id);
-uint8_t *entrypoint_decode(const uint8_t *code, int64_t token_id,
+uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                            int64_t head_it, int64_t layer_id);
 #endif // __cplusplus
 #endif // COMPRESSION_H

@@ -4774,7 +4774,6 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
     const int qk = QK8_ROY;
     const int nb = n / qk;
-    bool flag = false;
     assert(n % qk == 0);
     UNUSED(nrc);
     UNUSED(bx);
@@ -4793,9 +4792,12 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         int sumi = 0;
         // uint8_t* data = decoding_c((const void*)(x+i));
         uint8_t* data;
-        if(x[i].code[0]==0 && x[i].code[1]==0 && x[i].code[2]==0){
+        uint8_t tmp = 0;
+        for(int iter=0; iter<200; iter++){
+          tmp |= x[iter].code[iter];
+        }
+        if(!tmp){
           data = x[i].backup_addr;
-          flag = true;
         } else{
           const uint8_t* code_ptr = x[i].code;
           data = decoding_c(code_ptr);
@@ -4815,7 +4817,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
 
         sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
-        if(x[i].code[0]!=0 && x[i].code[1]!=0 && x[i].code[2]!=0){
+        if(tmp){
           free(data);
         }
     }

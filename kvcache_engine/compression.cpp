@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #ifdef __cplusplus
@@ -127,7 +128,7 @@ void encode(uint8_t *data, size_t size,
       current_byte <<= (8 - bit_count);
       encoded[idx_cnt++] = current_byte;
     }
-    if (idx_cnt > 100) {
+    if (idx_cnt > 200) {
       // too long;
       abort();
     }
@@ -139,21 +140,20 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
   // Temporary local variable to process data
   HuffmanResult info;
 
-  // Initialize all elements to a safe value, assuming 0 is safe
-  std::fill(std::begin(info.symbols), std::end(info.symbols), 0);
-  std::fill(std::begin(info.codelengths), std::end(info.codelengths), 0);
+  // Initialize all elements to a safe value, assuming 255 is safe
+  // std::fill(std::begin(info.symbols), std::end(info.symbols), 255);
+  // std::fill(std::begin(info.codelengths), std::end(info.codelengths), 255);
 
-  int iter = 0;
+  size_t len = 0;
   for (const auto &pair : canonicalCodes) {
-    if (iter < 16) { // Ensure we don't overflow the fixed size arrays
-      info.symbols[iter] = pair.first;
-      info.codelengths[iter] = static_cast<uint8_t>(pair.second.length());
-      ++iter;
-    }
+    info.symbols[len] = pair.first;
+    info.codelengths[len] = static_cast<uint8_t>(pair.second.length());
+    ++len;
   }
 
-  // Sort only the populated portion of the arrays
-  std::vector<size_t> indices(iter); // Use actual number of elements
+  // Sort symbols by their code lengths (and lexicographically within the same
+  // length)
+  std::vector<size_t> indices(len); // Use actual number of elements
   std::iota(indices.begin(), indices.end(), 0);
   std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
     return info.codelengths[i] < info.codelengths[j] ||
@@ -161,22 +161,15 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
             info.symbols[i] < info.symbols[j]);
   });
 
-  // Copy sorted data back into the info struct to return
-  uint8_t sortedSymbols[16];
-  uint8_t sortedCodeLengths[16];
-  for (size_t i = 0; i < indices.size(); ++i) {
-    sortedSymbols[i] = info.symbols[indices[i]];
-    sortedCodeLengths[i] = info.codelengths[indices[i]];
+  for (size_t i = 0; i < 16; ++i) {
+    if (i < len) {
+      table.symbols[i] = info.symbols[indices[i]];
+      table.codelengths[i] = info.codelengths[indices[i]];
+    } else {
+      table.symbols[i] = 255;
+      table.codelengths[i] = 255;
+    }
   }
-
-  // Copy the sorted arrays back to the original structure
-  std::copy(std::begin(sortedSymbols), std::end(sortedSymbols),
-            std::begin(info.symbols));
-  std::copy(std::begin(sortedCodeLengths), std::end(sortedCodeLengths),
-            std::begin(info.codelengths));
-
-  // Copy to output parameter
-  table = info;
 }
 // Reconstruct the canonical Huffman codes from the symbol and code lengths
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
@@ -184,8 +177,12 @@ std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
   std::map<std::string, uint8_t> huffmanCodes;
   int code = 0;
   int previousLength = 0;
+  size_t len = 16;
+  while (symbols[len - 1] == 255) {
+    len--;
+  }
 
-  for (size_t i = 0; i < 16; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     if (previousLength != 0 && codeLengths[i] > previousLength) {
       code <<= (codeLengths[i] - previousLength);
     }

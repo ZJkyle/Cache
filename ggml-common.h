@@ -172,8 +172,6 @@ typedef struct {
     } GGML_COMMON_AGGR;
     ggml_half2 dm;
   };
-  uint8_t qs[QK4_ROY];
-  uint8_t *backup_addr;
   uint8_t code[200];
 } block_q4_roy;
 

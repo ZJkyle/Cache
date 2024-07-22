@@ -739,12 +739,10 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
     /* } */
 
     uint8_t* tmp_addr = encode_fetch_addr_c(head_id, layer_id);
-    (*y).backup_addr = tmp_addr;
 
     for (int j = 0; j < qk; j++){
           const float x0 = (x[j] - min)*id;
           const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-          (*y).qs[j] = xi0;
           tmp_addr[j] = xi0;
     }
     uint8_t* code_addr = (*y).code;
@@ -4791,19 +4789,9 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
         int sumi = 0;
         uint8_t* data;
-        uint8_t tmp = 0;
-        for(int iter=0; iter<100; iter++){
-          tmp |= x[iter].code[iter];
-        }
-        bool flag = false;
-        if(!tmp){
-          flag = true;
-          data = x[i].backup_addr;
-          uint8_t* tmp_ptr =  decode_fetch_addr_c(token_id, head_id, layer_id);
-          if(data != tmp_ptr){
-            // addr error;
-            abort();
-          }
+        bool is_encoded = is_encoded_c(token_id, head_id, layer_id);
+        if(!is_encoded){
+          data =  decode_fetch_addr_c(token_id, head_id, layer_id);
         } else{
           const uint8_t* code_ptr = x[i].code;
           data = decoding_c(code_ptr, token_id, head_id, layer_id);
@@ -4812,10 +4800,6 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
-            if(data[j]!=x[i].qs[j]){
-              // decode error;
-              abort();
-            }
             const int v0 = (data[j]);
             const int v1 = (data[j + qk/2]);
 
@@ -4823,7 +4807,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         }
 
         sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
-        if(tmp){
+        if(is_encoded){
           free(data);
         }
     }

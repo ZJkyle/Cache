@@ -20,6 +20,7 @@ uint8_t *decode_fetch_addr_c(int64_t token_id, int64_t head_id,
                              int64_t layer_id);
 void store_code_addr_c(uint8_t *addr, int head_id, int layer_id);
 void update_token_len_c(int head_id, int layer_id);
+bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id);
 #ifdef __cplusplus
 }
 

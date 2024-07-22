@@ -18090,7 +18090,7 @@ extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx
 }
 
 void unmap_cache(const llama_context *ctx){
-    size_t file_size_k = 1024 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
+    size_t file_size_k = 8 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
     for(size_t i=0; i < 32; i++){
         unmapFileFromMemory(ctx->kv_self.k_l[i]->data, file_size_k);
         ctx->kv_self.k_l[i]->data = cache_ptr_backup[i];

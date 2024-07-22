@@ -282,6 +282,13 @@ void update_token_len_c(int head_id, int layer_id) {
   }
 }
 
+bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id) {
+  int64_t index = layer_id * (heads * token_groups) + head_id * token_groups +
+                  token_id / token_group_size;
+
+  return !(huffmantable[index].symbols[0] == huffmantable[index].symbols[1]);
+}
+
 #endif
 #ifdef __cplusplus
 }

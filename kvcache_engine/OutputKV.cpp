@@ -14,22 +14,32 @@ void outputKV(llama_context *ctx) {
   uint32_t n_embd_head = get_n_embd_head(ctx);
   uint32_t n_embd_gqa = n_head_kv * n_embd_head;
   const std::vector<ggml_tensor *> *k_l = get_key_vector_cpp(ctx);
-  // const std::vector<ggml_tensor *> *v_l = get_value_vector_cpp(ctx);
+  const std::vector<ggml_tensor *> *v_l = get_value_vector_cpp(ctx);
 
-  std::ofstream outFile("my_prompts/output_kv/rope_key_float.csv");
+  std::ofstream outFile_k("my_prompts/output_kv/wiki_key_float.csv");
+  std::ofstream outFile_v("my_prompts/output_kv/wiki_value_float.csv");
+
+  outFile_k << "layer,channel,sequence,value\n";
+  outFile_v << "layer,channel,sequence,value\n";
 
   for (uint32_t l = 0; l < n_layer; ++l) {
-    const ggml_tensor *layer_tensor = (*k_l)[l];
-    float *data = static_cast<float *>(layer_tensor->data);
+    const ggml_tensor *layer_tensor_k = (*k_l)[l];
+    const ggml_tensor *layer_tensor_v = (*v_l)[l];
+    uint16_t *d_k = static_cast<uint16_t *>(layer_tensor_k->data);
+    uint16_t *d_v = static_cast<uint16_t *>(layer_tensor_v->data);
 
     for (uint32_t t = 0; t < num_token; ++t) {
       for (uint32_t e = 0; e < n_embd_gqa; ++e) {
         uint32_t idx = n_embd_gqa * t + e;
-        float value = data[idx];
+        float key = d_k[idx];
+        float value = d_v[idx];
 
-        outFile << l << "," << e << "," << t << ", " << value << "\n";
+        outFile_k << l << "," << e << "," << t << ", " << key << "\n";
+        outFile_v << l << "," << e << "," << t << ", " << value << "\n";
       }
     }
   }
-  outFile.close();
+
+  outFile_k.close();
+  outFile_v.close();
 }

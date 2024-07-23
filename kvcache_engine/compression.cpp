@@ -15,7 +15,7 @@ const uint8_t block_size = 128;
 const uint8_t layers = 32;
 const uint8_t heads = 8;
 const uint8_t token_group_size = 32;
-const uint32_t kv_size = 512;
+const uint32_t kv_size = 4096;
 const uint32_t token_groups = kv_size / token_group_size;
 const uint32_t tmp_quantized_data_size =
     block_size * layers * heads * token_group_size;

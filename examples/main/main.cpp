@@ -1067,8 +1067,8 @@ int main(int argc, char **argv) {
     llama_free(ctx_guidance);
   }
 
-  dump_bits();
-  // outputKV(ctx);
+  // dump_bits();
+  outputKV(ctx);
   llama_free(ctx);
   llama_free_model(model);
 

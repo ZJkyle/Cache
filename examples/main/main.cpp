@@ -1,6 +1,7 @@
 #include "common.h"
 
 #include "OutputKV.h"
+#include "compression.h"
 #include "console.h"
 #include "llama.h"
 #include <cassert>
@@ -1066,6 +1067,7 @@ int main(int argc, char **argv) {
     llama_free(ctx_guidance);
   }
 
+  dump_bits();
   // outputKV(ctx);
   llama_free(ctx);
   llama_free_model(model);

@@ -5,6 +5,7 @@
 #include "compression.h"
 #include <algorithm>
 #include <bitset>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <numeric>
@@ -27,6 +28,7 @@ uint64_t total_tokens[layers][heads] = {{0}};
 uint8_t *code_addr[backup_addr_size] = {0};
 uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
 struct HuffmanResult huffmantable[huffmantable_size];
+uint64_t bits_cnt[huffmantable_size] = {0};
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -103,7 +105,8 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
 }
 
 void encode(uint8_t *data, size_t size,
-            const std::map<uint8_t, std::string> &codes, uint8_t **addr) {
+            const std::map<uint8_t, std::string> &codes, uint8_t **addr,
+            uint64_t table_idx) {
   for (int t = 0; t < token_group_size; t++) {
     std::string bitstring;
     for (size_t i = 0; i < size; i++) {
@@ -132,6 +135,7 @@ void encode(uint8_t *data, size_t size,
       // too long;
       abort();
     }
+    bits_cnt[table_idx] += idx_cnt;
   }
 }
 
@@ -231,7 +235,7 @@ void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
   auto codes = generateCanonicalCodes(root);
 
   uint8_t **b_addr = code_addr + code_idx;
-  encode(data, block_size, codes, b_addr);
+  encode(data, block_size, codes, b_addr, table_idx);
   prepareDecodingInfo(codes, huffmantable[table_idx]);
 }
 uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
@@ -244,6 +248,25 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
   return originalData;
 }
 
+void dump_bits() {
+
+  std::ofstream outFile("kvcache_engine/dump_bits.csv");
+
+  uint64_t total_t = total_tokens[0][0] / token_group_size;
+
+  for (uint8_t l = 0; l < layers; l++) {
+    for (uint8_t h = 0; h < heads; h++) {
+      for (uint64_t g = 0; g < total_t; g++) {
+        uint32_t index = l * (heads * token_groups) + h * token_groups + g;
+        outFile << bits_cnt[index];
+        if (g != total_t - 1) {
+          outFile << ",";
+        }
+      }
+      outFile << "\n";
+    }
+  }
+}
 extern "C" {
 uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
                     int64_t layer_id) {

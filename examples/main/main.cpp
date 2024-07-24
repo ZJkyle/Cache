@@ -130,9 +130,9 @@ static std::string chat_add_and_format(struct llama_model * model, std::vector<l
 int main(int argc, char ** argv) {
     gpt_params params;
     g_params = &params;
-
     if (!gpt_params_parse(argc, argv, params)) {
         gpt_params_print_usage(argc, argv, params);
+        // LOG_TEE("This part ends here. \n\n");
         return 1;
     }
 
@@ -143,6 +143,7 @@ int main(int argc, char ** argv) {
     LOG_TEE("Log start\n");
     log_dump_cmdline(argc, argv);
     llama_log_set(llama_log_callback_logTee, nullptr);
+    
 #endif // LOG_DISABLE_LOGS
 
     // TODO: Dump params ?
@@ -196,15 +197,15 @@ int main(int argc, char ** argv) {
     LOG("%s: llama backend init\n", __func__);
     llama_backend_init();
     llama_numa_init(params.numa);
-
     llama_model * model;
     llama_context * ctx;
     llama_context * ctx_guidance = NULL;
     std::vector<llama_chat_msg> chat_msgs;
     g_model = &model;
     g_ctx = &ctx;
-
+    
     // load the model and apply lora adapter, if any
+    LOG_TEE("\n------------------------------------------------------------First entry.--------------------------------------------------\n\n");
     LOG("%s: load the model and apply lora adapter, if any\n", __func__);
     std::tie(model, ctx) = llama_init_from_gpt_params(params);
     if (sparams.cfg_scale > 1.f) {
@@ -579,8 +580,9 @@ int main(int argc, char ** argv) {
                         LOG_TEE("\n\n%s: context full and n_predict == -%d => stopping\n", __func__, params.n_predict);
                         break;
                     }
-
+                    
                     const int n_left    = n_past - params.n_keep;
+                    //const int n_discard = 2;
                     const int n_discard = n_left/2;
 
                     LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",

@@ -2035,7 +2035,7 @@ std::string fs_get_cache_file(const std::string & filename) {
 
 std::tuple<struct llama_model *, struct llama_context *> llama_init_from_gpt_params(gpt_params & params) {
     auto mparams = llama_model_params_from_gpt_params(params);
-
+    
     llama_model * model = nullptr;
 
     if (!params.hf_repo.empty() && !params.hf_file.empty()) {
@@ -2051,15 +2051,18 @@ std::tuple<struct llama_model *, struct llama_context *> llama_init_from_gpt_par
         return std::make_tuple(nullptr, nullptr);
     }
 
-    auto cparams = llama_context_params_from_gpt_params(params);
+    // ----------------------------------------------init ctx----------------------------------------------
+    fprintf(stderr, "------------------------------------------------------------Second entry.--------------------------------------------------\n");
+    auto cparams = llama_context_params_from_gpt_params(params); // param from gpt params
 
-    llama_context * lctx = llama_new_context_with_model(model, cparams);
+    llama_context * lctx = llama_new_context_with_model(model, cparams); // llama context by model and param from gpt
     if (lctx == NULL) {
         fprintf(stderr, "%s: error: failed to create context with model '%s'\n", __func__, params.model.c_str());
         llama_free_model(model);
         return std::make_tuple(nullptr, nullptr);
     }
 
+    // --------------------------------------------------------------------------------------------
     if (!params.control_vectors.empty()) {
         if (params.control_vector_layer_start <= 0) params.control_vector_layer_start = 1;
         if (params.control_vector_layer_end   <= 0) params.control_vector_layer_end   = llama_n_layer(model);

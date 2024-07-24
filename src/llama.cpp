@@ -3034,7 +3034,6 @@ static bool llama_kv_cache_init(
 
     cache.cells.clear();
     cache.cells.resize(kv_size);
-
     if (cache.recurrent) {
         // init state copy sources
         for (uint32_t i = 0; i < cache.size; ++i) {
@@ -3043,19 +3042,21 @@ static bool llama_kv_cache_init(
     }
 
     // count used buffer types
-    std::map<ggml_backend_buffer_type_t, int> buft_layer_count;
+    std::map<ggml_backend_buffer_type_t, int> buft_layer_count; // def map to record buf type 對應的 layer(int)
+    // if offload, read buftype of each layer to decide where the layer buf should be (GPU or CPU)
     if (offload) {
         for (int64_t i = 0; i < n_layer; ++i) {
             buft_layer_count[model.buft_layer[i].buft]++;
         }
+    // if not, all buffer should store in GPU
     } else {
         buft_layer_count[llama_default_buffer_type_cpu(true)] = n_layer;
     }
 
     // create a context for each buffer type
     std::map<ggml_backend_buffer_type_t, ggml_context *> ctx_map;
-    for (auto & it : buft_layer_count) {
-        int n_layers = it.second;
+    for (auto & it : buft_layer_count) { // it 為buft_layer_count 中的每個元素 -> 每個 <ggml_backend_buffer_type_t, int> pair
+        int n_layers = it.second; // second 為  std::map<ggml_backend_buffer_type_t, int> buft_layer_count; 的 layer(int)
         struct ggml_init_params params = {
             /*.mem_size   =*/ 2u*n_layers*ggml_tensor_overhead(),
             /*.mem_buffer =*/ NULL,
@@ -19286,7 +19287,10 @@ struct llama_context * llama_new_context_with_model(
             return nullptr;
         }
         ctx->backends.push_back(ctx->backend_cpu);
-
+        
+        // Third Entry
+        fprintf(stderr, "------------------------------------------------------------Third entry.--------------------------------------------------\n");
+        
         if (!llama_kv_cache_init(ctx->kv_self, ctx, type_k, type_v, kv_size, cparams.offload_kqv)) {
             LLAMA_LOG_ERROR("%s: llama_kv_cache_init() failed for self-attention cache\n", __func__);
             llama_free(ctx);

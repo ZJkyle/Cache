@@ -1,3 +1,4 @@
+#include "ggml.h"
 #ifndef GGML_COMMON_DECL
 
 #if defined(GGML_COMMON_DECL_C)
@@ -174,6 +175,11 @@ typedef struct {
   };
   uint8_t code[200];
 } block_q4_roy;
+
+#define QK4_V_ROY 1
+typedef struct {
+  ggml_fp16_t d;
+} block_q4_v_roy;
 
 #define QK8_ROY 128
 typedef struct {

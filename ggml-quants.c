@@ -750,11 +750,8 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
     update_token_len_c(head_id, layer_id);
 }
 
-void quantize_row_q4_v_roy_reference(const float * restrict x, ggml_fp16_t * restrict y, int64_t k, int head_id, int layer_id) {
-    int64_t i = 0;
-    for (; i < k; i++) {
-        y[i] = GGML_FP32_TO_FP16(x[i]);
-    }
+void quantize_row_q4_v_roy_reference(const float *  restrict x, block_q4_v_roy * restrict y, int head_id, int layer_id) {
+    (*y).d = GGML_FP32_TO_FP16(*x);
 }
 
 void quantize_row_q4_1_reference(const float * restrict x, block_q4_1 * restrict y, int64_t k) {
@@ -4821,6 +4818,26 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
 
     *s = sumf;
 }
+
+void ggml_vec_dot_q4_v_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc, int64_t token_id, int64_t head_id, int64_t layer_id) {
+    assert(nrc == 1);
+    UNUSED(nrc);
+    UNUSED(bx);
+    UNUSED(by);
+    UNUSED(bs);
+
+    const block_q4_v_roy * restrict x = vx;
+    const ggml_fp16_t * restrict y = vy;
+
+    double sumf = 0.0;
+
+    for (int i = 0; i < n; ++i) {
+        sumf += (double)(GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i]));
+    }
+
+    *s = sumf;
+}
+
 
 void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc) {
     const int qk = QK8_1;

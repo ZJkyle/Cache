@@ -250,7 +250,7 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
 
 void dump_bits() {
 
-  std::ofstream outFile("kvcache_engine/dump_bits.csv");
+  std::ofstream outFile("my_prompts/dump_bits.csv");
 
   uint64_t total_t = total_tokens[0][0] / token_group_size;
 

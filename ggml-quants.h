@@ -17,6 +17,9 @@ void quantize_row_q4_0_reference(const float *GGML_RESTRICT x,
 void quantize_row_q4_roy_reference(const float *GGML_RESTRICT x,
                                    block_q4_roy *GGML_RESTRICT y, int64_t k,
                                    int head_id, int layer_id);
+void quantize_row_q4_v_roy_reference(const float *GGML_RESTRICT x,
+                                     ggml_fp16_t *GGML_RESTRICT y, int64_t k,
+                                     int head_id, int layer_id);
 void quantize_row_q4_1_reference(const float *GGML_RESTRICT x,
                                  block_q4_1 *GGML_RESTRICT y, int64_t k);
 void quantize_row_q5_0_reference(const float *GGML_RESTRICT x,

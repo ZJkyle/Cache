@@ -934,7 +934,18 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
         .nrows                    = 1,
     },
-
+        [GGML_TYPE_Q4_V_ROY] = {
+        .type_name                = "q4_v_roy",
+        .blck_size                = 1,
+        .type_size                = sizeof(ggml_fp16_t),
+        .is_quantized             = false,
+        // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
+        // .from_float               = quantize_row_q4_v_roy,
+        // .from_float_reference     = (ggml_from_float_t) ggml_fp32_to_fp16_row,
+        .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f16,
+        .vec_dot_type             = GGML_TYPE_F16,
+        .nrows                    = 1,
+    },
 };
 
 // For internal test use
@@ -8693,6 +8704,8 @@ static void ggml_compute_forward_dup_f32(
                             const float * src0_ptr = (float *) ((char *) src0->data + i01*nb01 + i02*nb02 + i03*nb03);
                             if(dst->type == GGML_TYPE_Q4_ROY){
                               quantize_row_q4_roy_reference(src0_ptr, (block_q4_roy*)(dst_ptr + id), ne00, i01, layer_id);
+                            }else if(dst->type == GGML_TYPE_Q4_V_ROY){
+                              quantize_row_q4_v_roy_reference(src0_ptr, (ggml_fp16_t*)(dst_ptr + id), ne00, i01, layer_id);
                             }else{
                               quantize_row_q(src0_ptr, dst_ptr + id, ne00);
                             }
@@ -8828,7 +8841,7 @@ static void ggml_compute_forward_dup_f32(
                 }
             }
         }
-    } else if (dst->type == GGML_TYPE_F16) {
+    } else if (dst->type == GGML_TYPE_F16 || dst->type == GGML_TYPE_Q4_V_ROY) {
         for (int64_t i03 = 0; i03 < ne03; i03++) {
             for (int64_t i02 = 0; i02 < ne02; i02++) {
                 i10 += ne00 * ir0;
@@ -12411,10 +12424,18 @@ static void ggml_compute_forward_mul_mat_one_chunk(
     float tmp[32];
 
     int64_t layer_id;
-    if(dst->name[4] == '\0'){
-      layer_id = dst->name[3]-'0';
+    if(src0->type == GGML_TYPE_Q4_ROY){
+      if(dst->name[4] == '\0'){
+        layer_id = dst->name[3]-'0';
+      }else{
+        layer_id = 10 * (dst->name[3]-'0') + dst->name[4]-'0';
+      }
     }else{
-      layer_id = 10 * (dst->name[3]-'0') + dst->name[4]-'0';
+      if(dst->name[5] == '\0'){
+        layer_id = dst->name[4]-'0';
+      }else{
+        layer_id = 10 * (dst->name[4]-'0') + dst->name[5]-'0';
+      }
     }
 
     for (int64_t iir1 = ir1_start; iir1 < ir1_end; iir1 += blck_1) {
@@ -12589,7 +12610,7 @@ static void ggml_compute_forward_mul_mat(
 #if GGML_USE_LLAMAFILE
     const bool src1_cont = ggml_is_contiguous(src1);
 
-    if (src1_cont) {
+    if (src1_cont && src0->type!=GGML_TYPE_Q4_V_ROY) {
         for (int64_t i13 = 0; i13 < ne13; i13++)
             for (int64_t i12 = 0; i12 < ne12; i12++)
                 if (!llamafile_sgemm(ne01, ne11, ne00/ggml_blck_size(src0->type),
@@ -12641,7 +12662,7 @@ UseGgmlGemm1:;
     }
 
 #if GGML_USE_LLAMAFILE
-    if (src1->type != vec_dot_type) {
+    if (src1->type != vec_dot_type && src0->type!=GGML_TYPE_Q4_V_ROY) {
         const void* wdata = (src1->type == vec_dot_type) ? src1->data : params->wdata;
         const size_t row_size = ggml_row_size(vec_dot_type, ne10);
 
@@ -14321,6 +14342,7 @@ static void ggml_compute_forward_clamp(
         case GGML_TYPE_Q4_0:
         case GGML_TYPE_Q4_1:
         case GGML_TYPE_Q4_ROY:
+        case GGML_TYPE_Q4_V_ROY:
         case GGML_TYPE_Q5_0:
         case GGML_TYPE_Q5_1:
         case GGML_TYPE_Q8_0:

@@ -750,6 +750,12 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
     update_token_len_c(head_id, layer_id);
 }
 
+void quantize_row_q4_v_roy_reference(const float * restrict x, ggml_fp16_t * restrict y, int64_t k, int head_id, int layer_id) {
+    int64_t i = 0;
+    for (; i < k; i++) {
+        y[i] = GGML_FP32_TO_FP16(x[i]);
+    }
+}
 
 void quantize_row_q4_1_reference(const float * restrict x, block_q4_1 * restrict y, int64_t k) {
     const int qk = QK4_1;
@@ -787,6 +793,7 @@ void quantize_row_q4_1_reference(const float * restrict x, block_q4_1 * restrict
         }
     }
 }
+
 
 void quantize_row_q4_roy(const float * restrict x, void * restrict y, int64_t k) {
     // quantize_row_q4_roy_reference(x, y, k);

@@ -1,4 +1,5 @@
 #include "common.h"
+#include "ggml.h"
 // Change JSON_ASSERT from assert() to GGML_ASSERT:
 #define JSON_ASSERT GGML_ASSERT
 #include "json-schema-to-grammar.h"
@@ -2127,6 +2128,9 @@ static ggml_type kv_cache_type_from_str(const std::string &s) {
   }
   if (s == "q4_roy") {
     return GGML_TYPE_Q4_ROY;
+  }
+  if (s == "q4_v_roy") {
+    return GGML_TYPE_Q4_V_ROY;
   }
 
   throw std::runtime_error("Invalid cache type: " + s);

@@ -2455,51 +2455,6 @@ static bool llama_kv_cache_init(
     for (int i = 0; i < (int) n_layer; i++) {
         struct ggml_context * ctx = offload ? ctx_map.at(model.buft_layer[i].buft) : cache.ctxs.front();
         ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
-        // ggml_tensor * k = ggml_new_tensor_mmap(type_k, n_embd_k_gqa*kv_size);
-        //
-        // std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
-        // size_t file_size_k = n_embd_k_gqa * kv_size * ggml_type_size(type_k);
-        // int fd_k;
-        // void* mapped_k = mapFileToMemory(filename_k, file_size_k, fd_k);
-        // if (mapped_k == MAP_FAILED) {
-        //     return false;
-        // }
-        //
-        // switch (type_k) {
-        //     case GGML_TYPE_Q4_ROY: {
-        //         struct block_q4_roy* k_data = static_cast<struct block_q4_roy*>(mapped_k);
-        //         memset(k_data, 0, file_size_k);
-        //         data_backup_q4_roy.emplace_back((block_q4_roy*)k->data);
-        //         k->data = (void*)k_data;
-        //         break;
-        //     }
-        //     case GGML_TYPE_Q8_ROY: {
-        //         struct block_q8_roy* k_data = static_cast<struct block_q8_roy*>(mapped_k);
-        //         memset(k_data, 0, file_size_k);
-        //         data_backup_q8_roy.emplace_back((block_q8_roy*)k->data);
-        //         k->data = (void*)k_data;
-        //         break;
-        //     }
-        //     case GGML_TYPE_F16:{
-        //         ggml_fp16_t* k_data = static_cast<ggml_fp16_t*>(mapped_k);
-        //         memset(k_data, 0, file_size_k);
-        //         data_backup_fp16.emplace_back((ggml_fp16_t*)k->data);
-        //         k->data = (void*)k_data;
-        //         break;
-        //     }
-        //     case GGML_TYPE_F32: {
-        //         float* k_data = static_cast<float*>(mapped_k);
-        //         memset(k_data, 0, file_size_k);
-        //         data_backup_fp32.emplace_back((float*)k->data);
-        //         k->data = (void*)k_data;
-        //         break;
-        //     }
-        //     default:
-        //         LLAMA_LOG_ERROR("%s: failed to transform data type\n", __func__);
-        //         return false;
-        // }
-
-
         ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa*kv_size);
         ggml_format_name(k, "cache_k_l%d", i);
         ggml_format_name(v, "cache_v_l%d", i);

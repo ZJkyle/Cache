@@ -1,3 +1,4 @@
+#include "ggml.h"
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -11,11 +12,15 @@
 #include <numeric>
 #include <queue>
 
+/////////////
 // common
+/////////////
 const uint8_t layers = 32;
 const uint32_t kv_size = 4096;
 
+/////////////
 // Key
+/////////////
 const uint8_t k_quant_block_size = 128;
 // encoding along sequence
 const uint8_t k_encode_group_size = 32;
@@ -32,13 +37,21 @@ uint8_t k_buffer[k_buffer_size] = {0};
 struct HuffmanResult k_huffmantable[k_huffmantable_size];
 uint64_t k_bits_cnt[k_huffmantable_size] = {0};
 
+/////////////
 // Value
+/////////////
 const uint8_t v_quant_block_size = 32;
 const uint8_t v_encode_group_size = 32;
+const uint32_t v_channels = 1024;
+const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
+//
+uint8_t v_token_cnt[layers][v_channels] = {{0}};
+ggml_fp16_t v_buffer[v_buffer_size] = {0};
 
+/////////////
 // common
+/////////////
 uint64_t total_tokens[layers][k_heads] = {{0}};
-
 //
 //
 //
@@ -291,7 +304,7 @@ uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
                     int64_t layer_id) {
   return entrypoint_decode(code, token_id, head_id, layer_id);
 }
-uint8_t *encode_fetch_addr_c(int head_id, int layer_id) {
+uint8_t *encode_fetch_addr_key_c(int head_id, int layer_id) {
   unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
   unsigned int index =
       layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
@@ -300,14 +313,27 @@ uint8_t *encode_fetch_addr_c(int head_id, int layer_id) {
 
   return k_buffer + index;
 }
-uint8_t *decode_fetch_addr_c(int64_t token_id, int64_t head_id,
-                             int64_t layer_id) {
+ggml_fp16_t *encode_fetch_addr_value_c(int channel_id, int layer_id) {
+  unsigned int abs_token_id = v_token_cnt[layer_id][channel_id];
+  unsigned int index = layer_id * (v_channels * v_quant_block_size) +
+                       channel_id * v_quant_block_size + abs_token_id;
+
+  return v_buffer + index;
+}
+uint8_t *decode_fetch_addr_key_c(int64_t token_id, int64_t head_id,
+                                 int64_t layer_id) {
   unsigned int index =
       layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
       head_id * (k_quant_block_size * k_encode_group_size) +
       (token_id % k_encode_group_size) * k_quant_block_size;
 
   return k_buffer + index;
+}
+
+ggml_fp16_t *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
+  unsigned int index = layer_id * (v_channels * v_quant_block_size) +
+                       channel_id * v_quant_block_size;
+  return v_buffer + index;
 }
 
 void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
@@ -317,7 +343,7 @@ void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
   k_code_addr[index] = addr;
 }
 
-void update_token_len_c(int head_id, int layer_id) {
+void update_token_len_key_c(int head_id, int layer_id) {
   k_token_cnt[layer_id][head_id] += 1;
   total_tokens[layer_id][head_id] += 1;
   if (k_token_cnt[layer_id][head_id] == k_encode_group_size) {
@@ -326,12 +352,24 @@ void update_token_len_c(int head_id, int layer_id) {
   }
 }
 
+void update_token_len_value_c(int channel_id, int layer_id) {
+  v_token_cnt[layer_id][channel_id] += 1;
+  // if (k_token_cnt[layer_id][head_id] == k_encode_group_size) {
+  //   entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id,
+  //   layer_id); k_token_cnt[layer_id][head_id] = 0;
+  // }
+}
+
 bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id) {
   int64_t index = layer_id * (k_heads * k_encode_groups) +
                   head_id * k_encode_groups + token_id / k_encode_group_size;
 
   return !(k_huffmantable[index].symbols[0] ==
            k_huffmantable[index].symbols[1]);
+}
+
+uint8_t fetch_value_token_len(int64_t channel_id, int64_t layer_id) {
+  return v_token_cnt[layer_id][channel_id];
 }
 
 #endif

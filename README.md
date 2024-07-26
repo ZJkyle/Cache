@@ -68,6 +68,8 @@ argument.
 - `-fa`: enable flash attention
 - `--pre-rope-cache`: make key cached before rope
 - `--cache-mmap`: use self-defined memory map for kv cache
+- `-ctk q4_roy`: enable key compression
+- `-ctv q4_v_roy`: enable value quantization & compression
 
 ### Extended Context Size
 

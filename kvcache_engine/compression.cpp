@@ -11,24 +11,37 @@
 #include <numeric>
 #include <queue>
 
-const uint8_t block_size = 128;
+// common
 const uint8_t layers = 32;
-const uint8_t heads = 8;
-const uint8_t token_group_size = 32;
 const uint32_t kv_size = 4096;
-const uint32_t token_groups = kv_size / token_group_size;
-const uint32_t tmp_quantized_data_size =
-    block_size * layers * heads * token_group_size;
-const uint32_t backup_addr_size = layers * heads * token_group_size;
-const uint32_t huffmantable_size = layers * heads * token_groups;
 
-// 1 layer / 1 head is assigned to a thread
-uint8_t cur_tokens[layers][heads] = {{0}};
-uint64_t total_tokens[layers][heads] = {{0}};
-uint8_t *code_addr[backup_addr_size] = {0};
-uint8_t tmp_quantized_data[tmp_quantized_data_size] = {0};
-struct HuffmanResult huffmantable[huffmantable_size];
-uint64_t bits_cnt[huffmantable_size] = {0};
+// Key
+const uint8_t k_quant_block_size = 128;
+// encoding along sequence
+const uint8_t k_encode_group_size = 32;
+const uint8_t k_heads = 8;
+const uint32_t k_encode_groups = kv_size / k_encode_group_size;
+const uint32_t k_buffer_size =
+    k_quant_block_size * layers * k_heads * k_encode_group_size;
+const uint32_t k_code_addr_size = layers * k_heads * k_encode_group_size;
+const uint32_t k_huffmantable_size = layers * k_heads * k_encode_groups;
+//
+uint8_t k_token_cnt[layers][k_heads] = {{0}};
+uint8_t *k_code_addr[k_code_addr_size] = {0};
+uint8_t k_buffer[k_buffer_size] = {0};
+struct HuffmanResult k_huffmantable[k_huffmantable_size];
+uint64_t k_bits_cnt[k_huffmantable_size] = {0};
+
+// Value
+const uint8_t v_quant_block_size = 32;
+const uint8_t v_encode_group_size = 32;
+
+// common
+uint64_t total_tokens[layers][k_heads] = {{0}};
+
+//
+//
+//
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -107,7 +120,7 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
 void encode(uint8_t *data, size_t size,
             const std::map<uint8_t, std::string> &codes, uint8_t **addr,
             uint64_t table_idx) {
-  for (int t = 0; t < token_group_size; t++) {
+  for (int t = 0; t < k_encode_group_size; t++) {
     std::string bitstring;
     for (size_t i = 0; i < size; i++) {
       bitstring += codes.at(data[t * size + i]);
@@ -135,7 +148,7 @@ void encode(uint8_t *data, size_t size,
       // too long;
       abort();
     }
-    bits_cnt[table_idx] += idx_cnt;
+    k_bits_cnt[table_idx] += idx_cnt;
   }
 }
 
@@ -204,13 +217,14 @@ std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
 uint8_t *decodeHuffman(const uint8_t *encodedData,
                        const std::map<std::string, uint8_t> &huffmanCodes) {
   std::string currentCode;
-  uint8_t *decodedData = (uint8_t *)malloc(block_size * sizeof(uint8_t));
+  uint8_t *decodedData =
+      (uint8_t *)malloc(k_quant_block_size * sizeof(uint8_t));
   uint8_t data_cnt = 0;
   uint8_t outer_idx = 0;
 
-  while (data_cnt < block_size) {
+  while (data_cnt < k_quant_block_size) {
     uint8_t byte = encodedData[outer_idx++];
-    for (int i = 7; i >= 0 && data_cnt < block_size; --i) {
+    for (int i = 7; i >= 0 && data_cnt < k_quant_block_size; --i) {
       currentCode.push_back(((byte >> i) & 1) ? '1' : '0');
       if (huffmanCodes.count(currentCode)) {
         decodedData[data_cnt++] = huffmanCodes.at(currentCode);
@@ -222,28 +236,32 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
 }
 
 void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
-  uint32_t q_idx = layer_id * (block_size * heads * token_group_size) +
-                   head_id * (token_group_size * block_size);
-  uint32_t code_idx =
-      layer_id * (heads * token_group_size) + head_id * token_group_size;
-  uint64_t table_idx = layer_id * (heads * token_groups) +
-                       head_id * token_groups + abs_token_id / token_group_size;
-  uint8_t *data = tmp_quantized_data + q_idx;
+  uint32_t q_idx =
+      layer_id * (k_quant_block_size * k_heads * k_encode_group_size) +
+      head_id * (k_encode_group_size * k_quant_block_size);
+  uint32_t code_idx = layer_id * (k_heads * k_encode_group_size) +
+                      head_id * k_encode_group_size;
+  uint64_t table_idx = layer_id * (k_heads * k_encode_groups) +
+                       head_id * k_encode_groups +
+                       abs_token_id / k_encode_group_size;
+  uint8_t *data = k_buffer + q_idx;
 
-  auto freq = generateFrequencyTable(data, block_size * token_group_size);
+  auto freq =
+      generateFrequencyTable(data, k_quant_block_size * k_encode_group_size);
   Node *root = buildHuffmanTree(freq);
   auto codes = generateCanonicalCodes(root);
 
-  uint8_t **b_addr = code_addr + code_idx;
-  encode(data, block_size, codes, b_addr, table_idx);
-  prepareDecodingInfo(codes, huffmantable[table_idx]);
+  uint8_t **b_addr = k_code_addr + code_idx;
+  encode(data, k_quant_block_size, codes, b_addr, table_idx);
+  prepareDecodingInfo(codes, k_huffmantable[table_idx]);
 }
 uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                            int64_t head_id, int64_t layer_id) {
-  int64_t table_idx = layer_id * (heads * token_groups) +
-                      head_id * token_groups + abs_token_id / token_group_size;
+  int64_t table_idx = layer_id * (k_heads * k_encode_groups) +
+                      head_id * k_encode_groups +
+                      abs_token_id / k_encode_group_size;
   auto huffmanCodes = reconstructHuffmanCodes(
-      huffmantable[table_idx].symbols, huffmantable[table_idx].codelengths);
+      k_huffmantable[table_idx].symbols, k_huffmantable[table_idx].codelengths);
   auto originalData = decodeHuffman(code, huffmanCodes);
   return originalData;
 }
@@ -252,13 +270,14 @@ void dump_bits() {
 
   std::ofstream outFile("my_prompts/dump_bits.csv");
 
-  uint64_t total_t = total_tokens[0][0] / token_group_size;
+  uint64_t total_t = total_tokens[0][0] / k_encode_group_size;
 
   for (uint8_t l = 0; l < layers; l++) {
-    for (uint8_t h = 0; h < heads; h++) {
+    for (uint8_t h = 0; h < k_heads; h++) {
       for (uint64_t g = 0; g < total_t; g++) {
-        uint32_t index = l * (heads * token_groups) + h * token_groups + g;
-        outFile << bits_cnt[index];
+        uint32_t index =
+            l * (k_heads * k_encode_groups) + h * k_encode_groups + g;
+        outFile << k_bits_cnt[index];
         if (g != total_t - 1) {
           outFile << ",";
         }
@@ -273,43 +292,46 @@ uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
   return entrypoint_decode(code, token_id, head_id, layer_id);
 }
 uint8_t *encode_fetch_addr_c(int head_id, int layer_id) {
-  unsigned int abs_token_id = cur_tokens[layer_id][head_id];
-  unsigned int index = layer_id * (heads * block_size * token_group_size) +
-                       head_id * (block_size * token_group_size) +
-                       abs_token_id * block_size;
+  unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
+  unsigned int index =
+      layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
+      head_id * (k_quant_block_size * k_encode_group_size) +
+      abs_token_id * k_quant_block_size;
 
-  return tmp_quantized_data + index;
+  return k_buffer + index;
 }
 uint8_t *decode_fetch_addr_c(int64_t token_id, int64_t head_id,
                              int64_t layer_id) {
-  unsigned int index = layer_id * (heads * block_size * token_group_size) +
-                       head_id * (block_size * token_group_size) +
-                       (token_id % token_group_size) * block_size;
+  unsigned int index =
+      layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
+      head_id * (k_quant_block_size * k_encode_group_size) +
+      (token_id % k_encode_group_size) * k_quant_block_size;
 
-  return tmp_quantized_data + index;
+  return k_buffer + index;
 }
 
 void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
-  unsigned int abs_token_id = cur_tokens[layer_id][head_id];
-  unsigned int index = layer_id * (heads * token_group_size) +
-                       head_id * token_group_size + abs_token_id;
-  code_addr[index] = addr;
+  unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
+  unsigned int index = layer_id * (k_heads * k_encode_group_size) +
+                       head_id * k_encode_group_size + abs_token_id;
+  k_code_addr[index] = addr;
 }
 
 void update_token_len_c(int head_id, int layer_id) {
-  cur_tokens[layer_id][head_id] += 1;
+  k_token_cnt[layer_id][head_id] += 1;
   total_tokens[layer_id][head_id] += 1;
-  if (cur_tokens[layer_id][head_id] == token_group_size) {
+  if (k_token_cnt[layer_id][head_id] == k_encode_group_size) {
     entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id, layer_id);
-    cur_tokens[layer_id][head_id] = 0;
+    k_token_cnt[layer_id][head_id] = 0;
   }
 }
 
 bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id) {
-  int64_t index = layer_id * (heads * token_groups) + head_id * token_groups +
-                  token_id / token_group_size;
+  int64_t index = layer_id * (k_heads * k_encode_groups) +
+                  head_id * k_encode_groups + token_id / k_encode_group_size;
 
-  return !(huffmantable[index].symbols[0] == huffmantable[index].symbols[1]);
+  return !(k_huffmantable[index].symbols[0] ==
+           k_huffmantable[index].symbols[1]);
 }
 
 #endif

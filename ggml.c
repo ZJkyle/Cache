@@ -3623,22 +3623,6 @@ static struct ggml_tensor * ggml_new_tensor_impl(
         view_src   = view_src->view_src;
     }
 
-    // if(view_src && view_src->backend==GGML_BACKEND_TYPE_MMAP){
-    //     view_src = (struct ggml_tensor *) ((char *) view_src + view_offs);
-    //     for (int i = 0; i < n_dims; i++) {
-    //         view_src->ne[i] = ne[i];
-    //     }
-    //     for (int i = n_dims; i < GGML_MAX_DIMS; i++){
-    //         view_src->ne[i] = 1;
-    //     }
-    //
-    //     view_src->nb[0] = ggml_type_size(type);
-    //     view_src->nb[1] = view_src->nb[0]*(view_src->ne[0]/ggml_blck_size(type));
-    //     for (int i = 2; i < GGML_MAX_DIMS; i++) {
-    //         view_src->nb[i] = view_src->nb[i - 1]*view_src->ne[i - 1];
-    //     }
-    //     return view_src;
-    // }
 
     size_t data_size = ggml_row_size(type, ne[0]);
     for (int i = 1; i < n_dims; i++) {

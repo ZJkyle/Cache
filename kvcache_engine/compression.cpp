@@ -50,7 +50,7 @@ const uint8_t v_quant_block_size = 32;
 const uint8_t v_encode_group_size = 32;
 const uint32_t v_quant_blocks = kv_size / v_quant_block_size;
 const uint32_t v_channels = 1024;
-const uint32_t v_buffer_size = layers * v_channels;
+const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
 //
 uint8_t v_token_cnt[layers][v_channels] = {{0}};
 ggml_fp16_t v_buffer[v_buffer_size] = {0};

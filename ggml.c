@@ -945,19 +945,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f16,
         .vec_dot_type             = GGML_TYPE_F16,
         .nrows                    = 1,
-    },
-        [GGML_TYPE_AGENT] = {
-        .type_name                = "agent",
-        .blck_size                = QK4_V_ROY,
-        .type_size                = sizeof(block_q4_v_roy),
-        .is_quantized             = true,
-        // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
-        // .from_float               = quantize_row_q4_v_roy,
-        // .from_float_reference     = (ggml_from_float_t) ggml_fp32_to_fp16_row,
-        .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f16,
-        .vec_dot_type             = GGML_TYPE_F16,
-        .nrows                    = 1,
-    },
+    }
 };
 
 // For internal test use
@@ -14343,7 +14331,6 @@ static void ggml_compute_forward_clamp(
         case GGML_TYPE_Q4_1:
         case GGML_TYPE_Q4_ROY:
         case GGML_TYPE_Q4_V_ROY:
-        case GGML_TYPE_AGENT:
         case GGML_TYPE_Q5_0:
         case GGML_TYPE_Q5_1:
         case GGML_TYPE_Q8_0:

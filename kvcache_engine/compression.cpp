@@ -1,6 +1,4 @@
 #include "ggml.h"
-#include <immintrin.h>
-#include <xmmintrin.h>
 #define GGML_COMMON_IMPL_C
 #include "ggml-common.h"
 

@@ -10,6 +10,7 @@
 
 std::vector<void*> cache_ptr_backup;
 
+
 #ifdef GGML_USE_RPC
 #  include "ggml-rpc.h"
 #endif
@@ -15765,16 +15766,17 @@ struct llama_context * llama_new_context_with_model(
             LLAMA_LOG_INFO("%s: graph splits = %d\n", __func__, n_splits);
         }
     }
-    if(ctx->cparams.cache_mmap){
+    // if(ctx->cparams.cache_mmap){
         mmap_cache(ctx);
-    }
+    // }
     return ctx;
 }
 
 void llama_free(struct llama_context * ctx) {
-    if(ctx->cparams.cache_mmap){
-      unmap_cache(ctx);
-    }
+    // if (ctx->cparams.cache_mmap){
+    //
+    // }
+    unmap_cache(ctx);
     delete ctx;
 }
 
@@ -18045,7 +18047,7 @@ extern "C" struct ggml_tensor **get_value_vector(const struct llama_context *ctx
 }
 
 void unmap_cache(const llama_context *ctx){
-    size_t file_size_k = 8 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
+    size_t file_size_k = (1024 / ggml_blck_size(ctx->kv_self.type_k)) * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
     for(size_t i=0; i < 32; i++){
         unmapFileFromMemory(ctx->kv_self.k_l[i]->data, file_size_k);
         ctx->kv_self.k_l[i]->data = cache_ptr_backup[i];
@@ -18054,10 +18056,9 @@ void unmap_cache(const llama_context *ctx){
 
 void mmap_cache(const llama_context *ctx){
     std::string mmap_dir = "kvcache_engine/mmap_data/";
-
     for (int i = 0; i < 32; i++) {
         std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
-        size_t file_size_k = 8 * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
+        size_t file_size_k = (1024 / ggml_blck_size(ctx->kv_self.type_k)) * ctx->kv_self.size * ggml_type_size(ctx->kv_self.type_k);
         int fd_k;
         void* mapped_k = mapFileToMemory(filename_k, file_size_k, fd_k);
         if (mapped_k == MAP_FAILED) {

@@ -400,6 +400,7 @@ enum ggml_type {
   GGML_TYPE_Q4_ROY = 31,
   GGML_TYPE_Q8_ROY = 32,
   GGML_TYPE_Q4_V_ROY = 33,
+  GGML_TYPE_AGENT = 34,
   GGML_TYPE_COUNT,
 };
 

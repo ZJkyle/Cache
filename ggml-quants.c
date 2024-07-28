@@ -748,10 +748,9 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
     update_token_len_key_c(head_id, layer_id);
 }
 
-void quantize_row_q4_v_roy_reference(const float * restrict x, block_q4_v_roy * restrict y, int channel_id, int layer_id) {
+void quantize_row_q4_v_roy_reference(const float * restrict x, int channel_id, int layer_id) {
     ggml_fp16_t* tmp_addr = encode_fetch_addr_value_c(channel_id, layer_id);
     *tmp_addr = GGML_FP32_TO_FP16(*x);
-    store_value_block_addr_c(y, channel_id, layer_id);
     update_token_len_value_c(channel_id, layer_id);
 }
 
@@ -4820,26 +4819,21 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
     *s = sumf;
 }
 
-void ggml_vec_dot_q4_v_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc, int64_t channel_id, int64_t layer_id) {
-    assert(nrc == 1);
-    UNUSED(nrc);
-    UNUSED(bx);
-    UNUSED(by);
-    UNUSED(bs);
+void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
 
     const int qk = QK4_V_ROY;
     const int nb = n / qk;
     assert(n % qk == 0);
     double sumf = 0.0;
 
-    const block_q4_v_roy * restrict x = vx;
     const ggml_fp16_t * restrict y = vy;
 
-    uint8_t token_len = fetch_value_token_len(channel_id, layer_id);
+    uint8_t token_len = fetch_value_token_len_c(channel_id, layer_id);
 
     for(int b = 0; b < nb; b++){
       if(b < nb-1 || token_len%qk == 0){
         // have quantized and compressed
+        block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
         for(int t = 0; t < qk; t++){
           sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))* GGML_FP16_TO_FP32(y[b*qk + t]));
         }

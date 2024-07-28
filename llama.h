@@ -66,6 +66,7 @@ uint32_t get_n_embd_head(const struct llama_context *ctx);
 struct ggml_tensor **get_key_vector(const struct llama_context *ctx);
 struct ggml_tensor **get_value_vector(const struct llama_context *ctx);
 //
+//
 typedef int32_t llama_pos;
 typedef int32_t llama_token;
 typedef int32_t llama_seq_id;

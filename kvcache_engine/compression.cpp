@@ -24,8 +24,8 @@
 // common
 /////////////
 const uint8_t layers = 32;
-const uint32_t kv_size = 4096;
-
+const uint32_t kv_size = 512;
+void *value_cache[32];
 /////////////
 // Key
 /////////////
@@ -50,14 +50,14 @@ uint64_t k_bits_cnt[k_huffmantable_size] = {0};
 /////////////
 const uint8_t v_quant_block_size = 32;
 const uint8_t v_encode_group_size = 32;
+const uint32_t v_quant_blocks = kv_size / v_quant_block_size;
 const uint32_t v_channels = 1024;
-const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
+const uint32_t v_buffer_size = layers * v_channels;
 //
 uint8_t v_token_cnt[layers][v_channels] = {{0}};
-block_q4_v_roy *v_block_addr[layers][v_channels] = {{0}};
 ggml_fp16_t v_buffer[v_buffer_size] = {0};
 uint8_t v_quant_tmp[v_channels][v_quant_block_size];
-
+uint32_t v_compressed_cnt[layers][v_channels] = {{0}};
 /////////////
 // common
 /////////////
@@ -339,7 +339,10 @@ void v_quant(int channel_id, int layer_id) {
     const float d = (max - min) / ((1 << 4) - 1);
     const float id = d ? 1.0f / d : 0.0f;
 
-    block_q4_v_roy *block_addr = v_block_addr[layer_id][s_channel_id];
+    uint32_t s_block_addr_index = s_channel_id * v_quant_blocks +
+                                  v_compressed_cnt[layer_id][s_channel_id];
+    block_q4_v_roy *block_addr =
+        (block_q4_v_roy *)value_cache[layer_id] + s_block_addr_index;
     (*block_addr).d = GGML_FP32_TO_FP16(d);
     (*block_addr).m = GGML_FP32_TO_FP16(min);
 
@@ -351,8 +354,10 @@ void v_quant(int channel_id, int layer_id) {
       quant_tmp_addr[t] = xi0;
       (*block_addr).qs[t] = xi0;
     }
+    v_compressed_cnt[layer_id][s_channel_id] += 1;
   }
 }
+
 void dump_bits() {
 
   std::ofstream outFile("my_prompts/dump_bits.csv");
@@ -371,6 +376,74 @@ void dump_bits() {
       }
       outFile << "\n";
     }
+  }
+}
+
+void init_value_cache() {
+  std::string mmap_dir = "kvcache_engine/mmap_data/";
+  for (int i = 0; i < 32; i++) {
+    std::string filename_v = mmap_dir + "layer_" + std::to_string(i) + "_v.dat";
+    size_t file_size_v = v_quant_blocks * 1024 * sizeof(block_q4_v_roy);
+    int fd_v;
+    void *mapped_v = mapFileToMemory_com(filename_v, file_size_v, fd_v);
+    if (mapped_v == MAP_FAILED) {
+      abort();
+    }
+    // value cache
+    block_q4_v_roy *v_data = static_cast<block_q4_v_roy *>(mapped_v);
+    memset(v_data, 0, file_size_v);
+    value_cache[i] = v_data;
+    close(fd_v);
+  }
+}
+void clear_value_cache() {
+  size_t file_size_v = v_quant_blocks * 1024 * sizeof(block_q4_v_roy);
+  for (size_t i = 0; i < 32; i++) {
+    unmapFileFromMemory_com(value_cache[i], file_size_v);
+  }
+}
+
+bool ensureFileSize_com(int fd, size_t size) {
+  struct stat sb;
+  if (fstat(fd, &sb) == -1) {
+    perror("fstat");
+    return false;
+  }
+
+  if (static_cast<long unsigned int>(sb.st_size) < size) {
+    if (ftruncate(fd, size) == -1) {
+      perror("ftruncate");
+      return false;
+    }
+  }
+  return true;
+}
+
+void *mapFileToMemory_com(const std::string &filename, size_t size, int &fd) {
+  fd = open(filename.c_str(), O_RDWR | O_CREAT, 0666);
+  if (fd == -1) {
+    perror("open");
+    return MAP_FAILED;
+  }
+
+  if (!ensureFileSize_com(fd, size)) {
+    close(fd);
+    return MAP_FAILED;
+  }
+
+  void *mapped = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  if (mapped == MAP_FAILED) {
+    perror("mmap");
+    close(fd);
+  }
+  return mapped;
+}
+
+void unmapFileFromMemory_com(void *addr, size_t size) {
+  if (munmap(addr, size) == -1) {
+    perror("munmap");
+    fprintf(stderr, "Failed to unmap memory at address %p with size %zu\n",
+            addr, size);
   }
 }
 extern "C" {
@@ -416,12 +489,6 @@ void store_key_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
                        head_id * k_encode_group_size + abs_token_id;
   k_code_addr[index] = addr;
 }
-void store_value_block_addr_c(block_q4_v_roy *addr, int channel_id,
-                              int layer_id) {
-  if (v_token_cnt[layer_id][channel_id] == 0) {
-    v_block_addr[layer_id][channel_id] = addr;
-  }
-}
 
 void update_token_len_key_c(int head_id, int layer_id) {
   k_token_cnt[layer_id][head_id] += 1;
@@ -454,8 +521,13 @@ bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id) {
            k_huffmantable[index].symbols[1]);
 }
 
-uint8_t fetch_value_token_len(int64_t channel_id, int64_t layer_id) {
+uint8_t fetch_value_token_len_c(int64_t channel_id, int64_t layer_id) {
   return v_token_cnt[layer_id][channel_id];
+}
+
+block_q4_v_roy *fetch_value_block_addr_c(int64_t channel_id, int64_t layer_id) {
+  uint32_t index = channel_id * v_quant_blocks;
+  return (block_q4_v_roy *)value_cache[layer_id] + index;
 }
 
 #endif

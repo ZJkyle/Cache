@@ -4,6 +4,7 @@
 #include "compression.h"
 #include "console.h"
 #include "llama.h"
+#include "util.h"
 #include <cassert>
 #include <ctime>
 #include <fstream>
@@ -121,6 +122,7 @@ static void llama_log_callback_logTee(ggml_log_level level, const char *text,
 }
 
 int main(int argc, char **argv) {
+  init_value_cache();
   gpt_params params;
   g_params = &params;
 
@@ -1070,6 +1072,7 @@ int main(int argc, char **argv) {
   // dump_bits();
   // outputKV(ctx);
   llama_free(ctx);
+  clear_value_cache();
   llama_free_model(model);
 
   llama_sampling_free(ctx_sampling);

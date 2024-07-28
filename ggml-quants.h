@@ -18,7 +18,6 @@ void quantize_row_q4_roy_reference(const float *GGML_RESTRICT x,
                                    block_q4_roy *GGML_RESTRICT y, int64_t k,
                                    int head_id, int layer_id);
 void quantize_row_q4_v_roy_reference(const float *GGML_RESTRICT x,
-                                     block_q4_v_roy *GGML_RESTRICT y,
                                      int channel_id, int layer_id);
 void quantize_row_q4_1_reference(const float *GGML_RESTRICT x,
                                  block_q4_1 *GGML_RESTRICT y, int64_t k);
@@ -153,10 +152,9 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float *GGML_RESTRICT s, size_t bs,
                                 const void *GGML_RESTRICT vy, size_t by,
                                 int nrc, int64_t token_id, int64_t head_id,
                                 int64_t layer_id);
-void ggml_vec_dot_q4_v_roy(int n, float *GGML_RESTRICT s, size_t bs,
-                           const void *GGML_RESTRICT vx, size_t bx,
-                           const void *GGML_RESTRICT vy, size_t by, int nrc,
-                           int64_t channel_id, int64_t layer_id);
+void ggml_vec_dot_q4_v_roy(int n, float *GGML_RESTRICT s,
+                           const void *GGML_RESTRICT vy, int64_t channel_id,
+                           int64_t layer_id);
 void ggml_vec_dot_q4_1_q8_1(int n, float *GGML_RESTRICT s, size_t bs,
                             const void *GGML_RESTRICT vx, size_t bx,
                             const void *GGML_RESTRICT vy, size_t by, int nrc);

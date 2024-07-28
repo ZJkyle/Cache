@@ -2,6 +2,10 @@
 #ifndef GGML_COMMON_DECL
 
 #if defined(GGML_COMMON_DECL_C)
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include <stdint.h>
 typedef uint16_t ggml_half;
 typedef uint32_t ggml_half2;
@@ -176,9 +180,16 @@ typedef struct {
   uint8_t code[200];
 } block_q4_roy;
 
-#define QK4_V_ROY 1
+#define QK4_V_ROY 32
 typedef struct {
-  ggml_fp16_t d;
+  union {
+    struct {
+      ggml_half d; // delta
+      ggml_half m; // min
+    } GGML_COMMON_AGGR;
+    ggml_half2 dm;
+  };
+  uint8_t qs[QK4_V_ROY];
 } block_q4_v_roy;
 
 #define QK8_ROY 128

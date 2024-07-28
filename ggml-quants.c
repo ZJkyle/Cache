@@ -8,9 +8,6 @@
 #include "ggml-impl.h"
 #include "kvcache_engine/compression.h"
 
-#define GGML_COMMON_IMPL_C
-#include "ggml-common.h"
-
 #include <math.h>
 #include <string.h>
 #include <assert.h>
@@ -747,13 +744,14 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
           tmp_addr[j] = xi0;
     }
     uint8_t* code_addr = (*y).code;
-    store_code_addr_c(code_addr, head_id, layer_id);
+    store_key_code_addr_c(code_addr, head_id, layer_id);
     update_token_len_key_c(head_id, layer_id);
 }
 
 void quantize_row_q4_v_roy_reference(const float *  restrict x, block_q4_v_roy * restrict y, int channel_id, int layer_id) {
     ggml_fp16_t* tmp_addr = encode_fetch_addr_value_c(channel_id, layer_id);
     *tmp_addr = GGML_FP32_TO_FP16(*x);
+    store_value_block_addr_c(y, channel_id, layer_id);
     update_token_len_value_c(channel_id, layer_id);
 }
 
@@ -4829,18 +4827,30 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, size_t bs, const void * re
     UNUSED(by);
     UNUSED(bs);
 
-    // const block_q4_v_roy * restrict x = vx;
-    const ggml_fp16_t * restrict y = vy;
-    ggml_fp16_t* x = decode_fetch_addr_value_c(channel_id, layer_id);
+    const int qk = QK4_V_ROY;
+    const int nb = n / qk;
+    assert(n % qk == 0);
     double sumf = 0.0;
-    // deal with unfull buffer
+
+    const block_q4_v_roy * restrict x = vx;
+    const ggml_fp16_t * restrict y = vy;
 
     uint8_t token_len = fetch_value_token_len(channel_id, layer_id);
 
-    for (uint8_t i = 0; i < token_len; ++i) {
-        sumf += (double)(GGML_FP16_TO_FP32(x[i])*GGML_FP16_TO_FP32(y[i]));
+    for(int b = 0; b < nb; b++){
+      if(b < nb-1 || token_len == 0){
+        // have quantized and compressed
+        for(int t = 0; t < qk; t++){
+          sumf += (double)((GGML_FP16_TO_FP32(x[b].qs[t]) * x[b].d + x[b].m)* GGML_FP16_TO_FP32(y[b*qk + t]));
+        }
+      }else{
+        // fetch buffer
+        ggml_fp16_t* buffer_addr = decode_fetch_addr_value_c(channel_id, layer_id);
+        for (uint8_t t = 0; t < token_len; ++t) {
+            sumf += (double)(GGML_FP16_TO_FP32(buffer_addr[t])*GGML_FP16_TO_FP32(y[b*qk + t]));
+        }
+      }
     }
-
     *s = sumf;
 }
 

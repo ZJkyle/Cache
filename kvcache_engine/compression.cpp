@@ -1,11 +1,19 @@
 #include "ggml.h"
+#include <immintrin.h>
+#include <xmmintrin.h>
+#define GGML_COMMON_IMPL_C
+#include "ggml-common.h"
+
+#include "compression.h"
+#include "ggml-impl.h"
+
+#ifdef __cplusplus
+#include <algorithm>
+#include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
-#ifdef __cplusplus
-#include "compression.h"
-#include <algorithm>
-#include <bitset>
+#include <float.h>
 #include <fstream>
 #include <functional>
 #include <iostream>
@@ -46,7 +54,9 @@ const uint32_t v_channels = 1024;
 const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
 //
 uint8_t v_token_cnt[layers][v_channels] = {{0}};
+block_q4_v_roy *v_block_addr[layers][v_channels] = {{0}};
 ggml_fp16_t v_buffer[v_buffer_size] = {0};
+uint8_t v_quant_tmp[v_channels][v_quant_block_size];
 
 /////////////
 // common
@@ -248,7 +258,7 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
   return decodedData;
 }
 
-void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
+void key_entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
   uint32_t q_idx =
       layer_id * (k_quant_block_size * k_heads * k_encode_group_size) +
       head_id * (k_encode_group_size * k_quant_block_size);
@@ -268,6 +278,31 @@ void entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
   encode(data, k_quant_block_size, codes, b_addr, table_idx);
   prepareDecodingInfo(codes, k_huffmantable[table_idx]);
 }
+
+void value_entrypoint_encode(int channel_id, int layer_id) {
+
+  v_quant(channel_id, layer_id);
+  // uint32_t q_idx =
+  //     layer_id * (k_quant_block_size * k_heads * k_encode_group_size) +
+  //     head_id * (k_encode_group_size * k_quant_block_size);
+  // uint32_t code_idx = layer_id * (k_heads * k_encode_group_size) +
+  //                     head_id * k_encode_group_size;
+  // uint64_t table_idx = layer_id * (k_heads * k_encode_groups) +
+  //                      head_id * k_encode_groups +
+  //                      abs_token_id / k_encode_group_size;
+  // uint8_t *data = k_buffer + q_idx;
+  //
+  // auto freq =
+  //     generateFrequencyTable(data, k_quant_block_size *
+  //     k_encode_group_size);
+  // Node *root = buildHuffmanTree(freq);
+  // auto codes = generateCanonicalCodes(root);
+  //
+  // uint8_t **b_addr = k_code_addr + code_idx;
+  // encode(data, k_quant_block_size, codes, b_addr, table_idx);
+  // prepareDecodingInfo(codes, k_huffmantable[table_idx]);
+}
+
 uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                            int64_t head_id, int64_t layer_id) {
   int64_t table_idx = layer_id * (k_heads * k_encode_groups) +
@@ -279,6 +314,45 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
   return originalData;
 }
 
+void v_quant(int channel_id, int layer_id) {
+  // per channel
+  for (int c = 0; c < v_encode_group_size; c++) {
+    int s_channel_id = channel_id - c;
+    uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
+                            s_channel_id * v_quant_block_size;
+    ggml_fp16_t *buffer_s_addr = v_buffer + buffer_index;
+    // quantize tokens within the channel
+    //
+    float min = FLT_MAX;
+    float max = -FLT_MAX;
+
+    for (int t = 0; t < v_quant_block_size; t++) {
+      const float v = GGML_FP16_TO_FP32(buffer_s_addr[t]);
+      if (v < min) {
+        min = v;
+      }
+      if (v > max) {
+        max = v;
+      }
+    }
+
+    const float d = (max - min) / ((1 << 4) - 1);
+    const float id = d ? 1.0f / d : 0.0f;
+
+    block_q4_v_roy *block_addr = v_block_addr[layer_id][s_channel_id];
+    (*block_addr).d = GGML_FP32_TO_FP16(d);
+    (*block_addr).m = GGML_FP32_TO_FP16(min);
+
+    uint8_t *quant_tmp_addr = v_quant_tmp[s_channel_id];
+
+    for (int t = 0; t < v_quant_block_size; t++) {
+      const float x0 = (GGML_FP16_TO_FP32(buffer_s_addr[t]) - min) * id;
+      const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+      quant_tmp_addr[t] = xi0;
+      (*block_addr).qs[t] = xi0;
+    }
+  }
+}
 void dump_bits() {
 
   std::ofstream outFile("my_prompts/dump_bits.csv");
@@ -336,28 +410,40 @@ ggml_fp16_t *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
   return v_buffer + index;
 }
 
-void store_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
+void store_key_code_addr_c(uint8_t *addr, int head_id, int layer_id) {
   unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
   unsigned int index = layer_id * (k_heads * k_encode_group_size) +
                        head_id * k_encode_group_size + abs_token_id;
   k_code_addr[index] = addr;
+}
+void store_value_block_addr_c(block_q4_v_roy *addr, int channel_id,
+                              int layer_id) {
+  if (v_token_cnt[layer_id][channel_id] == 0) {
+    v_block_addr[layer_id][channel_id] = addr;
+  }
 }
 
 void update_token_len_key_c(int head_id, int layer_id) {
   k_token_cnt[layer_id][head_id] += 1;
   total_tokens[layer_id][head_id] += 1;
   if (k_token_cnt[layer_id][head_id] == k_encode_group_size) {
-    entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id, layer_id);
+    key_entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id,
+                          layer_id);
     k_token_cnt[layer_id][head_id] = 0;
   }
 }
 
 void update_token_len_value_c(int channel_id, int layer_id) {
   v_token_cnt[layer_id][channel_id] += 1;
-  // if (k_token_cnt[layer_id][head_id] == k_encode_group_size) {
-  //   entrypoint_encode(total_tokens[layer_id][head_id] - 1, head_id,
-  //   layer_id); k_token_cnt[layer_id][head_id] = 0;
-  // }
+  if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) &&
+      v_token_cnt[layer_id][channel_id] == v_quant_block_size) {
+
+    value_entrypoint_encode(channel_id, layer_id);
+
+    for (int i = channel_id; i > channel_id - v_encode_group_size; i--) {
+      v_token_cnt[layer_id][channel_id] = 0;
+    }
+  }
 }
 
 bool is_encoded_c(int64_t token_id, int64_t head_id, int64_t layer_id) {

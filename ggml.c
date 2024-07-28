@@ -937,13 +937,13 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         [GGML_TYPE_Q4_V_ROY] = {
         .type_name                = "q4_v_roy",
         .blck_size                = 1,
-        .type_size                = sizeof(ggml_fp16_t),
+        .type_size                = sizeof(float),
         .is_quantized             = false,
         // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
         // .from_float               = quantize_row_q4_v_roy,
         // .from_float_reference     = (ggml_from_float_t) ggml_fp32_to_fp16_row,
-        .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f16,
-        .vec_dot_type             = GGML_TYPE_F16,
+        .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f32,
+        .vec_dot_type             = GGML_TYPE_F32,
         .nrows                    = 1,
     }
 };
@@ -8771,7 +8771,7 @@ static void ggml_compute_forward_dup_f32(
     int64_t i12 = 0;
     int64_t i13 = 0;
 
-    if (dst->type == GGML_TYPE_F32) {
+    if (dst->type == GGML_TYPE_F32 || dst->type == GGML_TYPE_Q4_V_ROY) {
         for (int64_t i03 = 0; i03 < ne03; i03++) {
             for (int64_t i02 = 0; i02 < ne02; i02++) {
                 i10 += ne00 * ir0;
@@ -8792,8 +8792,11 @@ static void ggml_compute_forward_dup_f32(
                         const char * src0_ptr = ((char *) src0->data + i00*nb00 + i01*nb01 + i02*nb02 + i03*nb03);
                               char * dst_ptr  = ((char *)  dst->data + i10*nb0  + i11*nb1  + i12*nb2  + i13*nb3);
 
-                        memcpy(dst_ptr, src0_ptr, sizeof(float));
-
+                        if(dst->type == GGML_TYPE_Q4_V_ROY){
+                          quantize_row_q4_v_roy_reference((const float *)src0_ptr, i01, layer_id);
+                        }else{
+                          memcpy(dst_ptr, src0_ptr, sizeof(float));
+                        }
                         if (++i10 == ne0) {
                             i10 = 0;
                             if (++i11 == ne1) {

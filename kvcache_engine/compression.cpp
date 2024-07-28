@@ -53,7 +53,7 @@ const uint32_t v_channels = 1024;
 const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
 //
 uint8_t v_token_cnt[layers][v_channels] = {{0}};
-ggml_fp16_t v_buffer[v_buffer_size] = {0};
+float v_buffer[v_buffer_size] = {0};
 uint8_t v_quant_tmp[v_channels][v_quant_block_size];
 uint32_t v_compressed_cnt[layers][v_channels] = {{0}};
 /////////////
@@ -318,14 +318,14 @@ void v_quant(int channel_id, int layer_id) {
     int s_channel_id = channel_id - c;
     uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
                             s_channel_id * v_quant_block_size;
-    ggml_fp16_t *buffer_s_addr = v_buffer + buffer_index;
+    float *buffer_s_addr = v_buffer + buffer_index;
     // quantize tokens within the channel
     //
     float min = FLT_MAX;
     float max = -FLT_MAX;
 
     for (int t = 0; t < v_quant_block_size; t++) {
-      const float v = GGML_FP16_TO_FP32(buffer_s_addr[t]);
+      const float v = buffer_s_addr[t];
       if (v < min) {
         min = v;
       }
@@ -347,7 +347,7 @@ void v_quant(int channel_id, int layer_id) {
     uint8_t *quant_tmp_addr = v_quant_tmp[s_channel_id];
 
     for (int t = 0; t < v_quant_block_size; t++) {
-      const float x0 = (GGML_FP16_TO_FP32(buffer_s_addr[t]) - min) * id;
+      const float x0 = (buffer_s_addr[t] - min) * id;
       const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
       quant_tmp_addr[t] = xi0;
       (*block_addr).qs[t] = xi0;
@@ -458,7 +458,7 @@ uint8_t *encode_fetch_addr_key_c(int head_id, int layer_id) {
 
   return k_buffer + index;
 }
-ggml_fp16_t *encode_fetch_addr_value_c(int channel_id, int layer_id) {
+float *encode_fetch_addr_value_c(int channel_id, int layer_id) {
   unsigned int abs_token_id = v_token_cnt[layer_id][channel_id];
   unsigned int index = layer_id * (v_channels * v_quant_block_size) +
                        channel_id * v_quant_block_size + abs_token_id;
@@ -475,7 +475,7 @@ uint8_t *decode_fetch_addr_key_c(int64_t token_id, int64_t head_id,
   return k_buffer + index;
 }
 
-ggml_fp16_t *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
+float *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
   unsigned int index = layer_id * (v_channels * v_quant_block_size) +
                        channel_id * v_quant_block_size;
   return v_buffer + index;

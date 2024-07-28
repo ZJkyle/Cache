@@ -23,10 +23,10 @@ struct HuffmanResult;
 uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
                     int64_t layer_id);
 uint8_t *encode_fetch_addr_key_c(int head_id, int layer_id);
-ggml_fp16_t *encode_fetch_addr_value_c(int channel_id, int layer_id);
+float *encode_fetch_addr_value_c(int channel_id, int layer_id);
 uint8_t *decode_fetch_addr_key_c(int64_t token_id, int64_t head_id,
                                  int64_t layer_id);
-ggml_fp16_t *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id);
+float *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id);
 void store_key_code_addr_c(uint8_t *addr, int head_id, int layer_id);
 void update_token_len_key_c(int head_id, int layer_id);
 void update_token_len_value_c(int channel_id, int layer_id);

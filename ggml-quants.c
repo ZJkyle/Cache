@@ -749,8 +749,8 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
 }
 
 void quantize_row_q4_v_roy_reference(const float * restrict x, int channel_id, int layer_id) {
-    ggml_fp16_t* tmp_addr = encode_fetch_addr_value_c(channel_id, layer_id);
-    *tmp_addr = GGML_FP32_TO_FP16(*x);
+    float* tmp_addr = encode_fetch_addr_value_c(channel_id, layer_id);
+    *tmp_addr = *x;
     update_token_len_value_c(channel_id, layer_id);
 }
 
@@ -4826,7 +4826,7 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
     assert(n % qk == 0);
     double sumf = 0.0;
 
-    const ggml_fp16_t * restrict y = vy;
+    const float * restrict y = vy;
 
     uint8_t token_len = fetch_value_token_len_c(channel_id, layer_id);
 
@@ -4835,13 +4835,13 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
         for(int t = 0; t < qk; t++){
-          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))* GGML_FP16_TO_FP32(y[b*qk + t]));
+          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
       }else{
         // fetch buffer
-        ggml_fp16_t* buffer_addr = decode_fetch_addr_value_c(channel_id, layer_id);
+        float* buffer_addr = decode_fetch_addr_value_c(channel_id, layer_id);
         for (uint8_t t = 0; t < token_len; ++t) {
-            sumf += (double)(GGML_FP16_TO_FP32(buffer_addr[t])*GGML_FP16_TO_FP32(y[b*qk + t]));
+            sumf += (double)(buffer_addr[t]*y[b*qk + t]);
         }
       }
     }

@@ -20,49 +20,49 @@
 
 /////////////
 // common
-/////////////
 const uint8_t layers = 32;
-const uint32_t kv_size = 512;
-block_q4_v_roy *value_cache[32];
+block_q4_v_roy *value_cache[layers];
+// *parameters*
+uint32_t prompt_size;
+uint32_t kv_size;
+// *arrays*
+uint64_t **total_tokens;
+/////////////
+
 /////////////
 // Key
-/////////////
-const uint8_t k_quant_block_size = 128;
-// encoding along sequence
-const uint8_t k_encode_group_size = 32;
+const uint8_t k_quant_block_size = QK4_ROY;
 const uint8_t k_heads = 8;
-const uint32_t k_encode_groups = kv_size / k_encode_group_size;
-const uint32_t k_buffer_size =
-    k_quant_block_size * layers * k_heads * k_encode_group_size;
-const uint32_t k_code_addr_size = layers * k_heads * k_encode_group_size;
-const uint32_t k_huffmantable_size = layers * k_heads * k_encode_groups;
-//
-uint8_t k_token_cnt[layers][k_heads] = {{0}};
-uint8_t *k_code_addr[k_code_addr_size] = {0};
-uint8_t k_buffer[k_buffer_size] = {0};
-struct HuffmanResult k_huffmantable[k_huffmantable_size];
-uint64_t k_bits_cnt[k_huffmantable_size] = {0};
+// *parameters*
+uint32_t k_encode_group_size;
+// *affected by parameters*
+uint32_t k_encode_groups;
+uint32_t k_buffer_size;
+uint32_t k_code_addr_size;
+uint32_t k_huffmantable_size;
+// *arrays*
+uint8_t **k_token_cnt;
+uint8_t **k_code_addr; // 1d array (pointer)
+uint8_t *k_buffer;
+uint64_t *k_bits_cnt;
+HuffmanResult *k_huffmantable;
+/////////////
 
 /////////////
 // Value
-/////////////
-const uint8_t v_quant_block_size = 32;
-const uint8_t v_encode_group_size = 32;
-const uint32_t v_quant_blocks = kv_size / v_quant_block_size;
+const uint8_t v_quant_block_size = QK4_V_ROY;
 const uint32_t v_channels = 1024;
 const uint32_t v_buffer_size = layers * v_channels * v_quant_block_size;
-//
-uint8_t v_token_cnt[layers][v_channels] = {{0}};
-float v_buffer[v_buffer_size] = {0};
-uint8_t v_quant_tmp[v_channels][v_quant_block_size];
-uint32_t v_compressed_cnt[layers][v_channels] = {{0}};
+// *parameters*
+uint32_t v_encode_group_size;
+// *affected by parameters*
+uint32_t v_quant_blocks;
+// *arrays*
+uint8_t **v_token_cnt;
+float *v_buffer;
+uint8_t **v_quant_tmp;
+uint32_t **v_compressed_cnt;
 /////////////
-// common
-/////////////
-uint64_t total_tokens[layers][k_heads] = {{0}};
-//
-//
-//
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size) {
@@ -141,7 +141,7 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
 void encode(uint8_t *data, size_t size,
             const std::map<uint8_t, std::string> &codes, uint8_t **addr,
             uint64_t table_idx) {
-  for (int t = 0; t < k_encode_group_size; t++) {
+  for (uint32_t t = 0; t < k_encode_group_size; t++) {
     std::string bitstring;
     for (size_t i = 0; i < size; i++) {
       bitstring += codes.at(data[t * size + i]);
@@ -315,7 +315,7 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
 void v_quant(int channel_id, int layer_id) {
   // per channel
   int start_channel_id = channel_id - (v_encode_group_size - 1);
-  for (int c = 0; c < v_encode_group_size; c++) {
+  for (uint32_t c = 0; c < v_encode_group_size; c++) {
     int s_channel_id = start_channel_id + c;
     uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
                             s_channel_id * v_quant_block_size;
@@ -377,6 +377,100 @@ void dump_bits() {
   }
 }
 
+template <typename T> void init_2d_array(T **&array, size_t rows, size_t cols) {
+  array = new T *[rows];
+  for (size_t i = 0; i < rows; ++i) {
+    array[i] = new T[cols];
+    memset(array[i], 0, cols * sizeof(T));
+  }
+}
+// template
+template void init_2d_array<uint8_t>(uint8_t **&array, size_t rows,
+                                     size_t cols);
+template void init_2d_array<uint64_t>(uint64_t **&array, size_t rows,
+                                      size_t cols);
+
+template <typename T> void cleanup_2d_array(T **&array, size_t rows) {
+  for (size_t i = 0; i < rows; ++i) {
+    delete[] array[i];
+  }
+  delete[] array;
+  array = nullptr;
+}
+template void cleanup_2d_array<uint8_t>(uint8_t **&array, size_t rows);
+template void cleanup_2d_array<uint64_t>(uint64_t **&array, size_t rows);
+
+template <typename T> void init_1d_array(T *&array, size_t ne) {
+  array = new T[ne];
+  memset(array, 0, ne * sizeof(T));
+}
+// template
+template void init_1d_array<uint8_t *>(uint8_t **&array, size_t ne);
+template void init_1d_array<uint8_t>(uint8_t *&array, size_t ne);
+template void init_1d_array<uint64_t>(uint64_t *&array, size_t ne);
+template void init_1d_array<HuffmanResult>(HuffmanResult *&array, size_t ne);
+template void init_1d_array<float>(float *&array, size_t ne);
+
+template <typename T> void cleanup_1d_array(T *&array) {
+  delete[] array;
+  array = nullptr;
+}
+// template
+template void cleanup_1d_array<uint8_t *>(uint8_t **&array);
+template void cleanup_1d_array<uint8_t>(uint8_t *&array);
+template void cleanup_1d_array<uint64_t>(uint64_t *&array);
+template void cleanup_1d_array<HuffmanResult>(HuffmanResult *&array);
+template void cleanup_1d_array<float>(float *&array);
+
+void init_parameters(uint32_t n_size, uint32_t c_size, uint32_t k_en_size,
+                     uint32_t v_en_size) {
+  // parameters
+  prompt_size = c_size;
+  kv_size = n_size;
+  k_encode_group_size = k_en_size;
+  v_encode_group_size = v_en_size;
+  // init key variables
+  k_encode_groups = kv_size / k_encode_group_size;
+  k_buffer_size = k_quant_block_size * layers * k_heads * k_encode_group_size;
+  k_code_addr_size = layers * k_heads * k_encode_group_size;
+  k_huffmantable_size = layers * k_heads * k_encode_groups;
+  // init key arrays
+  init_2d_array<uint8_t>(k_token_cnt, layers, k_heads);
+  init_1d_array<uint8_t *>(k_code_addr, k_code_addr_size);
+  init_1d_array<uint8_t>(k_buffer, k_buffer_size);
+  init_1d_array<uint64_t>(k_bits_cnt, k_huffmantable_size);
+  init_1d_array<HuffmanResult>(k_huffmantable, k_huffmantable_size);
+  // init value variables
+  v_quant_blocks = kv_size / v_quant_block_size;
+  // init value arrays
+  init_2d_array<uint8_t>(v_token_cnt, layers, v_channels);
+  init_1d_array<float>(v_buffer, v_buffer_size);
+  init_2d_array<uint8_t>(v_quant_tmp, v_channels, v_quant_block_size);
+  init_2d_array<uint32_t>(v_compressed_cnt, layers, v_channels);
+  // init total tokens
+  init_2d_array<uint64_t>(total_tokens, layers, k_heads);
+  // init value cache
+  init_value_cache();
+}
+
+void cleanup_buffers() {
+  // key buffers
+  cleanup_2d_array<uint8_t>(k_token_cnt, layers);
+  cleanup_1d_array<uint8_t *>(k_code_addr);
+  cleanup_1d_array<uint8_t>(k_buffer);
+  cleanup_1d_array<uint64_t>(k_bits_cnt);
+  cleanup_1d_array<HuffmanResult>(k_huffmantable);
+  // value buffers
+  cleanup_2d_array<uint8_t>(v_token_cnt, layers);
+  cleanup_1d_array<float>(v_buffer);
+  cleanup_2d_array<uint8_t>(v_quant_tmp, v_channels);
+  cleanup_2d_array<uint32_t>(v_compressed_cnt, layers);
+  // total tokens buffers
+  cleanup_2d_array<uint64_t>(total_tokens, layers);
+  // value cache
+  clear_value_cache();
+}
+
 void init_value_cache() {
   std::string mmap_dir = "kvcache_engine/mmap_data/";
   for (int i = 0; i < layers; i++) {
@@ -394,6 +488,7 @@ void init_value_cache() {
     close(fd_v);
   }
 }
+
 void clear_value_cache() {
   size_t file_size_v = v_quant_blocks * v_channels * sizeof(block_q4_v_roy);
   for (size_t i = 0; i < layers; i++) {
@@ -506,7 +601,7 @@ void update_token_len_value_c(int channel_id, int layer_id) {
     value_entrypoint_encode(channel_id, layer_id);
 
     int start_channel_id = channel_id - (v_encode_group_size - 1);
-    for (int c = 0; c < v_encode_group_size; c++) {
+    for (uint64_t c = 0; c < v_encode_group_size; c++) {
       v_token_cnt[layer_id][start_channel_id + c] = 0;
     }
   }

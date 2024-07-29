@@ -1396,6 +1396,7 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
   // End of Parse args for logging parameters
 #endif // LOG_DISABLE_LOGS
 
+  // roy
   if (arg == "--pre-rope-cache") {
     params.pre_rope_cache = true;
     return true;
@@ -1405,6 +1406,30 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     params.cache_mmap = true;
     return true;
   }
+
+  if (arg == "--disable-encode") {
+    params.use_encode = false;
+    return true;
+  }
+
+  if (arg == "-k_encode_size") {
+    if (++i >= argc) {
+      invalid_param = true;
+      return true;
+    }
+    params.k_encode_size = std::stoi(argv[i]);
+    return true;
+  }
+
+  if (arg == "-v_encode_size") {
+    if (++i >= argc) {
+      invalid_param = true;
+      return true;
+    }
+    params.v_encode_size = std::stoi(argv[i]);
+    return true;
+  }
+
   return false;
 }
 

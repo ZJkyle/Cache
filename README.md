@@ -70,6 +70,8 @@ argument.
 - `--cache-mmap`: use self-defined memory map for kv cache (enable by default)
 - `-ctk q4_roy`: enable key compression
 - `-ctv q4_v_roy`: enable value quantization & compression
+- `-k_encode_size`: size of encoding group size for key (default: 32)
+- `-v_encode_size`: size of encoding group size for value (default: 32)
 
 ### Extended Context Size
 

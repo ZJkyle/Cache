@@ -221,8 +221,12 @@ struct gpt_params {
   std::string mmproj = "";        // path to multimodal projector
   std::vector<std::string> image; // path to image file(s)
 
+  // roy
   bool pre_rope_cache = false;
   bool cache_mmap = false;
+  bool use_encode = true;
+  uint32_t k_encode_size = 32;
+  uint32_t v_encode_size = 32;
 };
 
 void gpt_params_handle_model_default(gpt_params &params);

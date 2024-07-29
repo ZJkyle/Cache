@@ -122,7 +122,6 @@ static void llama_log_callback_logTee(ggml_log_level level, const char *text,
 }
 
 int main(int argc, char **argv) {
-  init_value_cache();
   gpt_params params;
   g_params = &params;
 
@@ -592,6 +591,9 @@ int main(int argc, char **argv) {
     fprintf(stderr, "%s: failed to initialize sampling subsystem\n", __func__);
     exit(1);
   }
+
+  init_parameters(params.n_predict, params.n_ctx, params.k_encode_size,
+                  params.v_encode_size);
 
   while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
     // predict
@@ -1072,7 +1074,8 @@ int main(int argc, char **argv) {
   // dump_bits();
   // outputKV(ctx);
   llama_free(ctx);
-  clear_value_cache();
+  // clear_value_cache();
+  cleanup_buffers();
   llama_free_model(model);
 
   llama_sampling_free(ctx_sampling);

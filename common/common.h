@@ -227,6 +227,7 @@ struct gpt_params {
   bool use_encode = true;
   uint32_t k_encode_size = 32;
   uint32_t v_encode_size = 32;
+  uint32_t prompt_size = 256;
 };
 
 void gpt_params_handle_model_default(gpt_params &params);

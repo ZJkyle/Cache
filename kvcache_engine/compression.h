@@ -70,14 +70,14 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                            int64_t head_it, int64_t layer_id);
 void v_quant(int channel_id, int layer_id);
 void dump_bits();
-void init_parameters();
 void init_value_cache();
 void clear_value_cache();
 //
 bool ensureFileSize_com(int fd, size_t size);
 void *mapFileToMemory_com(const std::string &filename, size_t size, int &fd);
 void unmapFileFromMemory_com(void *addr, size_t size);
-void init_parameters(uint32_t n_size, uint32_t k_en_size, uint32_t v_en_size);
+void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
+                     uint32_t v_en_size);
 void cleanup_buffers();
 template <typename T> void cleanup_1d_array(T *&array);
 template <typename T> void init_1d_array(T *&array, size_t ne);

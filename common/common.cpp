@@ -1412,7 +1412,7 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     return true;
   }
 
-  if (arg == "-k_encode_size") {
+  if (arg == "-k-encode-size") {
     if (++i >= argc) {
       invalid_param = true;
       return true;
@@ -1421,12 +1421,21 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     return true;
   }
 
-  if (arg == "-v_encode_size") {
+  if (arg == "-v-encode-size") {
     if (++i >= argc) {
       invalid_param = true;
       return true;
     }
     params.v_encode_size = std::stoi(argv[i]);
+    return true;
+  }
+
+  if (arg == "-prompt-size") {
+    if (++i >= argc) {
+      invalid_param = true;
+      return true;
+    }
+    params.prompt_size = std::stoi(argv[i]);
     return true;
   }
 

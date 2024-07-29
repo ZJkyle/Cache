@@ -10,7 +10,7 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ## Quick start
 
 ```bash
-./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  -c 2048 -- color -n 128 -p "what is llm?" -ctk q4_roy -ctv q4_v_roy --ignore-eos
+./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  --color -prompt-size 1024 -c 2048 -n 128 -p "what is llm?" -ctk q4_roy -ctv q4_v_roy --ignore-eos
 ```
 
 ## Measure Perplexity
@@ -70,8 +70,9 @@ argument.
 - `--cache-mmap`: use self-defined memory map for kv cache (enable by default)
 - `-ctk q4_roy`: enable key compression
 - `-ctv q4_v_roy`: enable value quantization & compression
-- `-k_encode_size`: size of encoding group size for key (default: 32)
-- `-v_encode_size`: size of encoding group size for value (default: 32)
+- `-k-encode-size`: size of encoding group size for key (default: 32)
+- `-v-encode-size`: size of encoding group size for value (default: 32)
+- `-prompt-size`: size of prompt length (default: 256)
 
 ### Extended Context Size
 

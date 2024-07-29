@@ -329,16 +329,17 @@ void v_quant(int channel_id, int layer_id) {
     const float id = d ? 1.0f / d : 0.0f;
 
     uint32_t s_block_addr_index =
-        channel_id * v_quant_blocks +
-        (v_quanted_cnt[channel_id] / v_quant_block_size) +
-        v_encoded_cnt[layer_id][channel_id];
+        channel_id * kv_size +
+        v_encoded_cnt[layer_id][channel_id / v_encode_group_size] +
+        v_quanted_cnt[channel_id];
     block_q4_v_roy *block_addr = value_cache[layer_id] + s_block_addr_index;
 
     (*block_addr).d = GGML_FP32_TO_FP16(d);
     (*block_addr).m = GGML_FP32_TO_FP16(min);
 
-    uint8_t *quant_tmp_addr =
-        v_quant_tmp[channel_id] + v_quanted_cnt[channel_id];
+    uint32_t q_tmp_row = v_quanted_cnt[channel_id];
+    uint32_t q_tmp_col = channel_id * v_quant_block_size;
+    uint8_t *quant_tmp_addr = &(v_quant_tmp[q_tmp_row][q_tmp_col]);
 
     for (int t = 0; t < v_quant_block_size; t++) {
       const float x0 = (buffer_s_addr[t] - min) * id;
@@ -347,7 +348,7 @@ void v_quant(int channel_id, int layer_id) {
       (*block_addr).qs[t] = xi0;
     }
 
-    v_quanted_cnt[channel_id] += v_quant_block_size;
+    v_quanted_cnt[channel_id] += 1;
   }
 }
 
@@ -446,7 +447,8 @@ void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
   // init value arrays
   init_2d_array<uint8_t>(v_token_cnt, layers, v_channels);
   init_1d_array<float>(v_buffer, v_buffer_size);
-  init_2d_array<uint8_t>(v_quant_tmp, v_channels, prompt_size);
+  init_2d_array<uint8_t>(v_quant_tmp, prompt_size / v_quant_block_size,
+                         v_quant_block_size * v_channels);
   init_1d_array<uint32_t>(v_quanted_cnt, v_channels);
   init_2d_array<uint32_t>(v_encoded_cnt, layers, v_encode_groups);
   // init total tokens
@@ -465,7 +467,7 @@ void cleanup_buffers() {
   // value buffers
   cleanup_2d_array<uint8_t>(v_token_cnt, layers);
   cleanup_1d_array<float>(v_buffer);
-  cleanup_2d_array<uint8_t>(v_quant_tmp, v_channels);
+  cleanup_2d_array<uint8_t>(v_quant_tmp, prompt_size / v_quant_block_size);
   cleanup_1d_array<uint32_t>(v_quanted_cnt);
   cleanup_2d_array<uint32_t>(v_encoded_cnt, layers);
   // total tokens buffers
@@ -547,7 +549,7 @@ uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
                     int64_t layer_id) {
   return entrypoint_decode(code, token_id, head_id, layer_id);
 }
-uint8_t *encode_fetch_addr_key_c(int head_id, int layer_id) {
+uint8_t *store_fetch_addr_key_c(int head_id, int layer_id) {
   unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
   unsigned int index =
       layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
@@ -556,14 +558,14 @@ uint8_t *encode_fetch_addr_key_c(int head_id, int layer_id) {
 
   return k_buffer + index;
 }
-float *encode_fetch_addr_value_c(int channel_id, int layer_id) {
+float *store_fetch_addr_value_c(int channel_id, int layer_id) {
   unsigned int abs_token_id = v_token_cnt[layer_id][channel_id];
   unsigned int index = layer_id * (v_channels * v_quant_block_size) +
                        channel_id * v_quant_block_size + abs_token_id;
 
   return v_buffer + index;
 }
-uint8_t *decode_fetch_addr_key_c(int64_t token_id, int64_t head_id,
+uint8_t *mulmat_fetch_addr_key_c(int64_t token_id, int64_t head_id,
                                  int64_t layer_id) {
   unsigned int index =
       layer_id * (k_heads * k_quant_block_size * k_encode_group_size) +
@@ -573,7 +575,7 @@ uint8_t *decode_fetch_addr_key_c(int64_t token_id, int64_t head_id,
   return k_buffer + index;
 }
 
-float *decode_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
+float *mulmat_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
   unsigned int index = layer_id * (v_channels * v_quant_block_size) +
                        channel_id * v_quant_block_size;
   return v_buffer + index;

@@ -736,7 +736,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
         /* y[i].qs[j] |= xi1 << 4; */
     /* } */
 
-    uint8_t* tmp_addr = encode_fetch_addr_key_c(head_id, layer_id);
+    uint8_t* tmp_addr = store_fetch_addr_key_c(head_id, layer_id);
 
     for (int j = 0; j < qk; j++){
           const float x0 = (x[j] - min)*id;
@@ -749,7 +749,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
 }
 
 void quantize_row_q4_v_roy_reference(const float * restrict x, int channel_id, int layer_id) {
-    float* tmp_addr = encode_fetch_addr_value_c(channel_id, layer_id);
+    float* tmp_addr = store_fetch_addr_value_c(channel_id, layer_id);
     *tmp_addr = *x;
     update_token_len_value_c(channel_id, layer_id);
 }
@@ -4795,7 +4795,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
         uint8_t* data;
         bool is_encoded = is_encoded_c(token_id, head_id, layer_id);
         if(!is_encoded){
-          data =  decode_fetch_addr_key_c(token_id, head_id, layer_id);
+          data =  mulmat_fetch_addr_key_c(token_id, head_id, layer_id);
         } else{
           const uint8_t* code_ptr = x[i].code;
           data = decoding_c(code_ptr, token_id, head_id, layer_id);
@@ -4839,7 +4839,7 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         }
       }else{
         // fetch buffer
-        float* buffer_addr = decode_fetch_addr_value_c(channel_id, layer_id);
+        float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);
         for (uint8_t t = 0; t < token_len; t++) {
             sumf += (double)(buffer_addr[t]*y[b*qk + t]);
         }

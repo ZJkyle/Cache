@@ -67,7 +67,7 @@ argument.
 - `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
 - `-fa`: enable flash attention
 - `--pre-rope-cache`: make key cached before rope
-- `--cache-mmap`: use self-defined memory map for kv cache
+- `--cache-mmap`: use self-defined memory map for kv cache (enable by default)
 - `-ctk q4_roy`: enable key compression
 - `-ctv q4_v_roy`: enable value quantization & compression
 

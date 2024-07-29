@@ -190,7 +190,6 @@ typedef struct {
     ggml_half2 dm;
   };
   uint8_t qs[QK4_V_ROY];
-  float original[QK4_V_ROY];
 } block_q4_v_roy;
 
 #define QK8_ROY 128

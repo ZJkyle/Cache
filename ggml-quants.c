@@ -4835,8 +4835,6 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
         for(int t = 0; t < qk; t++){
-          double tmp = (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
-          double diff = tmp - (double)x[b].original[t];
           sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
       }else{

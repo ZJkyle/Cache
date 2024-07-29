@@ -351,7 +351,6 @@ void v_quant(int channel_id, int layer_id) {
       const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
       quant_tmp_addr[t] = xi0;
       (*block_addr).qs[t] = xi0;
-      (*block_addr).original[t] = buffer_s_addr[t];
     }
     v_compressed_cnt[layer_id][s_channel_id] += 1;
   }

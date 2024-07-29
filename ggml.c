@@ -8826,7 +8826,7 @@ static void ggml_compute_forward_dup_f32(
                 }
             }
         }
-    } else if (dst->type == GGML_TYPE_F16 || dst->type == GGML_TYPE_Q4_V_ROY) {
+    } else if (dst->type == GGML_TYPE_F16 ) {
         for (int64_t i03 = 0; i03 < ne03; i03++) {
             for (int64_t i02 = 0; i02 < ne02; i02++) {
                 i10 += ne00 * ir0;
@@ -8847,11 +8847,7 @@ static void ggml_compute_forward_dup_f32(
                         const char * src0_ptr = ((char *) src0->data + i00*nb00 + i01*nb01 + i02*nb02 + i03*nb03);
                               char * dst_ptr  = ((char *)  dst->data + i10*nb0  + i11*nb1  + i12*nb2  + i13*nb3);
 
-                        if(dst->type == GGML_TYPE_Q4_V_ROY){
-                          quantize_row_q4_v_roy_reference((const float *)src0_ptr, i01, layer_id);
-                        }else{
                           *(ggml_fp16_t *) dst_ptr = GGML_FP32_TO_FP16(*(const float *) src0_ptr);
-                        }
 
                         if (++i10 == ne0) {
                             i10 = 0;

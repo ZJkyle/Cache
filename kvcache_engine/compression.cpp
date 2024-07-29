@@ -23,7 +23,7 @@
 /////////////
 const uint8_t layers = 32;
 const uint32_t kv_size = 512;
-void *value_cache[32];
+block_q4_v_roy *value_cache[32];
 /////////////
 // Key
 /////////////
@@ -314,8 +314,9 @@ uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
 
 void v_quant(int channel_id, int layer_id) {
   // per channel
+  int start_channel_id = channel_id - (v_encode_group_size - 1);
   for (int c = 0; c < v_encode_group_size; c++) {
-    int s_channel_id = channel_id - c;
+    int s_channel_id = start_channel_id + c;
     uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
                             s_channel_id * v_quant_block_size;
     float *buffer_s_addr = v_buffer + buffer_index;
@@ -339,8 +340,7 @@ void v_quant(int channel_id, int layer_id) {
 
     uint32_t s_block_addr_index = s_channel_id * v_quant_blocks +
                                   v_compressed_cnt[layer_id][s_channel_id];
-    block_q4_v_roy *block_addr =
-        (block_q4_v_roy *)value_cache[layer_id] + s_block_addr_index;
+    block_q4_v_roy *block_addr = value_cache[layer_id] + s_block_addr_index;
     (*block_addr).d = GGML_FP32_TO_FP16(d);
     (*block_addr).m = GGML_FP32_TO_FP16(min);
 
@@ -351,6 +351,7 @@ void v_quant(int channel_id, int layer_id) {
       const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
       quant_tmp_addr[t] = xi0;
       (*block_addr).qs[t] = xi0;
+      (*block_addr).original[t] = buffer_s_addr[t];
     }
     v_compressed_cnt[layer_id][s_channel_id] += 1;
   }
@@ -379,9 +380,9 @@ void dump_bits() {
 
 void init_value_cache() {
   std::string mmap_dir = "kvcache_engine/mmap_data/";
-  for (int i = 0; i < 32; i++) {
+  for (int i = 0; i < layers; i++) {
     std::string filename_v = mmap_dir + "layer_" + std::to_string(i) + "_v.dat";
-    size_t file_size_v = v_quant_blocks * 1024 * sizeof(block_q4_v_roy);
+    size_t file_size_v = v_quant_blocks * v_channels * sizeof(block_q4_v_roy);
     int fd_v;
     void *mapped_v = mapFileToMemory_com(filename_v, file_size_v, fd_v);
     if (mapped_v == MAP_FAILED) {
@@ -395,8 +396,8 @@ void init_value_cache() {
   }
 }
 void clear_value_cache() {
-  size_t file_size_v = v_quant_blocks * 1024 * sizeof(block_q4_v_roy);
-  for (size_t i = 0; i < 32; i++) {
+  size_t file_size_v = v_quant_blocks * v_channels * sizeof(block_q4_v_roy);
+  for (size_t i = 0; i < layers; i++) {
     unmapFileFromMemory_com(value_cache[i], file_size_v);
   }
 }
@@ -500,13 +501,14 @@ void update_token_len_key_c(int head_id, int layer_id) {
 
 void update_token_len_value_c(int channel_id, int layer_id) {
   v_token_cnt[layer_id][channel_id] += 1;
-  if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) &&
-      v_token_cnt[layer_id][channel_id] == v_quant_block_size) {
+  if (((channel_id % v_encode_group_size) == (v_encode_group_size - 1)) &&
+      (v_token_cnt[layer_id][channel_id] == v_quant_block_size)) {
 
     value_entrypoint_encode(channel_id, layer_id);
 
-    for (int i = channel_id; i > channel_id - v_encode_group_size; i--) {
-      v_token_cnt[layer_id][channel_id] = 0;
+    int start_channel_id = channel_id - (v_encode_group_size - 1);
+    for (int c = 0; c < v_encode_group_size; c++) {
+      v_token_cnt[layer_id][start_channel_id + c] = 0;
     }
   }
 }
@@ -525,7 +527,7 @@ uint8_t fetch_value_token_len_c(int64_t channel_id, int64_t layer_id) {
 
 block_q4_v_roy *fetch_value_block_addr_c(int64_t channel_id, int64_t layer_id) {
   uint32_t index = channel_id * v_quant_blocks;
-  return (block_q4_v_roy *)value_cache[layer_id] + index;
+  return value_cache[layer_id] + index;
 }
 
 #endif

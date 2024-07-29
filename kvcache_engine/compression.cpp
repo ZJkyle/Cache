@@ -23,7 +23,6 @@
 const uint8_t layers = 32;
 block_q4_v_roy *value_cache[layers];
 // *parameters*
-uint32_t prompt_size;
 uint32_t kv_size;
 // *arrays*
 uint64_t **total_tokens;
@@ -422,10 +421,8 @@ template void cleanup_1d_array<uint64_t>(uint64_t *&array);
 template void cleanup_1d_array<HuffmanResult>(HuffmanResult *&array);
 template void cleanup_1d_array<float>(float *&array);
 
-void init_parameters(uint32_t n_size, uint32_t c_size, uint32_t k_en_size,
-                     uint32_t v_en_size) {
+void init_parameters(uint32_t n_size, uint32_t k_en_size, uint32_t v_en_size) {
   // parameters
-  prompt_size = c_size;
   kv_size = n_size;
   k_encode_group_size = k_en_size;
   v_encode_group_size = v_en_size;

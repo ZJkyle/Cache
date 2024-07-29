@@ -77,8 +77,7 @@ void clear_value_cache();
 bool ensureFileSize_com(int fd, size_t size);
 void *mapFileToMemory_com(const std::string &filename, size_t size, int &fd);
 void unmapFileFromMemory_com(void *addr, size_t size);
-void init_parameters(uint32_t n_size, uint32_t c_size, uint32_t k_en_size,
-                     uint32_t v_en_size);
+void init_parameters(uint32_t n_size, uint32_t k_en_size, uint32_t v_en_size);
 void cleanup_buffers();
 template <typename T> void cleanup_1d_array(T *&array);
 template <typename T> void init_1d_array(T *&array, size_t ne);

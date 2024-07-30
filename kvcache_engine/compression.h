@@ -20,8 +20,10 @@ extern "C" {
 #endif
 struct Node;
 struct HuffmanResult;
-uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
-                    int64_t layer_id);
+uint8_t *key_decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
+                        int64_t layer_id);
+uint8_t *value_decoding_c(const uint8_t *code, int64_t quant_block_id,
+                          int64_t channel_id, int64_t layer_id);
 uint8_t *store_fetch_addr_key_c(int head_id, int layer_id);
 float *store_fetch_addr_value_c(int channel_id, int layer_id);
 uint8_t *mulmat_fetch_addr_key_c(int64_t token_id, int64_t head_id,
@@ -55,9 +57,12 @@ std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
                                                    size_t size);
 void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
                          struct HuffmanResult &table);
-void encode(uint8_t *data, size_t size,
-            const std::map<uint8_t, std::string> &codes, uint8_t **addr,
-            uint64_t table_idx);
+void key_encode(uint8_t *data, size_t size,
+                const std::map<uint8_t, std::string> &codes, uint8_t **addr,
+                uint64_t table_idx);
+void value_encode(uint8_t *data, size_t size,
+                  const std::map<uint8_t, std::string> &codes,
+                  block_q4_v_roy *addr, uint64_t table_idx);
 Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs);
 std::map<uint8_t, std::string> generateCanonicalCodes(Node *root);
 uint8_t *decodeHuffman(const uint8_t *encodedData,
@@ -66,8 +71,10 @@ std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths);
 void key_entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id);
 void value_entrypoint_encode(int channel_id, int layer_id);
-uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
-                           int64_t head_it, int64_t layer_id);
+uint8_t *key_entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
+                               int64_t head_id, int64_t layer_id);
+uint8_t *value_entrypoint_decode(const uint8_t *code, int64_t quant_block_id,
+                                 int64_t channel_id, int64_t layer_id);
 void v_quant(int channel_id, int layer_id);
 void dump_bits();
 void init_value_cache();

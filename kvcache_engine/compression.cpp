@@ -58,12 +58,15 @@ uint32_t v_encode_group_size;
 uint32_t v_encode_groups;
 // *affected by parameters*
 uint32_t v_quant_blocks;
+uint32_t v_huffmantable_size;
 // *arrays*
 uint8_t **v_token_cnt;
 float *v_buffer;
 uint8_t **v_quant_tmp;
 uint32_t *v_quanted_cnt;
 uint32_t **v_encoded_cnt;
+uint64_t *v_bits_cnt;
+HuffmanResult *v_huffmantable;
 /////////////
 
 std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
@@ -140,9 +143,9 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
   return canonicalCodes;
 }
 
-void encode(uint8_t *data, size_t size,
-            const std::map<uint8_t, std::string> &codes, uint8_t **addr,
-            uint64_t table_idx) {
+void key_encode(uint8_t *data, size_t size,
+                const std::map<uint8_t, std::string> &codes, uint8_t **addr,
+                uint64_t table_idx) {
   for (uint32_t t = 0; t < k_encode_group_size; t++) {
     std::string bitstring;
     for (size_t i = 0; i < size; i++) {
@@ -175,6 +178,40 @@ void encode(uint8_t *data, size_t size,
   }
 }
 
+void value_encode(uint8_t *data, size_t size,
+                  const std::map<uint8_t, std::string> &codes,
+                  block_q4_v_roy *addr, uint64_t table_idx) {
+  for (uint32_t c = 0; c < v_encode_group_size; t++) {
+    std::string bitstring;
+    for (size_t t = 0; t < size; i++) {
+      bitstring += codes.at(data[c * size + t]);
+    }
+
+    block_q4_v_roy *encoded = addr + c * v_quant_blocks;
+    uint8_t current_byte = 0;
+    int bit_count = 0;
+    int idx_cnt = 0;
+
+    for (auto bit = bitstring.begin(); bit != bitstring.end(); ++bit) {
+      current_byte = (current_byte << 1) | (*bit - '0');
+      bit_count++;
+      if (bit_count == 8) {
+        encoded->code[idx_cnt++] = current_byte;
+        current_byte = 0;
+        bit_count = 0;
+      }
+    }
+    if (bit_count > 0) {
+      current_byte <<= (8 - bit_count);
+      encoded->code[idx_cnt++] = current_byte;
+    }
+    if (idx_cnt > 200) {
+      // too long;
+      abort();
+    }
+    v_bits_cnt[table_idx] += idx_cnt;
+  }
+}
 void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
                          HuffmanResult &table) {
   HuffmanResult info;
@@ -268,37 +305,58 @@ void key_entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
   auto codes = generateCanonicalCodes(root);
 
   uint8_t **b_addr = k_code_addr + code_idx;
-  encode(data, k_quant_block_size, codes, b_addr, table_idx);
+  key_encode(data, k_quant_block_size, codes, b_addr, table_idx);
   prepareDecodingInfo(codes, k_huffmantable[table_idx]);
 }
 
 void value_entrypoint_encode(int channel_id, int layer_id) {
-  // uint32_t q_idx =
-  //     layer_id * (k_quant_block_size * k_heads * k_encode_group_size) +
-  //     head_id * (k_encode_group_size * k_quant_block_size);
-  // uint32_t code_idx = layer_id * (k_heads * k_encode_group_size) +
-  //                     head_id * k_encode_group_size;
-  // uint64_t table_idx = layer_id * (k_heads * k_encode_groups) +
-  //                      head_id * k_encode_groups +
-  //                      abs_token_id / k_encode_group_size;
-  // uint8_t *data = k_buffer + q_idx;
-  //
-  // auto freq =
-  //     generateFrequencyTable(data, k_quant_block_size *
-  //     k_encode_group_size);
-  // Node *root = buildHuffmanTree(freq);
-  // auto codes = generateCanonicalCodes(root);
-  //
-  // uint8_t **b_addr = k_code_addr + code_idx;
-  // encode(data, k_quant_block_size, codes, b_addr, table_idx);
-  // prepareDecodingInfo(codes, k_huffmantable[table_idx]);
+  int s_channel_id = channel_id - (v_quanted_cnt - 1);
+  // process multiple groups of encoding within same channel group
+  for (int g = 0; g < v_quanted_cnt[s_channel_id]; g++) {
+    uint32_t q_data_idx = g * (v_quant_block_size * v_channels) +
+                          s_channel_id * v_quant_block_size;
+    uint8_t *data = v_quant_tmp + q_data_idx;
+
+    uint32_t s_code_idx =
+        s_channel_id * kv_size +
+        v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size];
+    block_q4_v_roy *b_addr = value_cache[layer_id] + s_code_idx;
+
+    uint64_t table_idx =
+        layer_id * (v_encode_groups * v_quant_blocks) +
+        (s_channel_id / v_encode_group_size) * v_quant_blocks +
+        v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size];
+
+    auto freq =
+        generateFrequencyTable(data, v_quant_block_size * k_encode_group_size);
+    Node *root = buildHuffmanTree(freqs);
+    auto codes = generateCanonicalCodes(root);
+    value_encode(data, v_quant_block_size, b_addr, table_idx);
+    prepareDecodingInfo(codes, v_huffmantable[table_idx]);
+    v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size] += 1;
+  }
+
+  for (int c = s_channel_id; c <= channel_id; c++) {
+    v_quanted_cnt[c] = 0;
+  }
 }
 
-uint8_t *entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
-                           int64_t head_id, int64_t layer_id) {
+uint8_t *key_entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
+                               int64_t head_id, int64_t layer_id) {
   int64_t table_idx = layer_id * (k_heads * k_encode_groups) +
                       head_id * k_encode_groups +
                       abs_token_id / k_encode_group_size;
+  auto huffmanCodes = reconstructHuffmanCodes(
+      k_huffmantable[table_idx].symbols, k_huffmantable[table_idx].codelengths);
+  auto originalData = decodeHuffman(code, huffmanCodes);
+  return originalData;
+}
+
+uint8_t *value_entrypoint_decode(const uint8_t *code, int64_t quant_block_id,
+                                 int64_t channel_id, int64_t layer_id) {
+  int64_t table_idx = layer_id * (v_encode_groups * v_quant_blocks) +
+                      (channel_id / v_encode_group_size) * v_quant_blocks +
+                      quant_block_id;
   auto huffmanCodes = reconstructHuffmanCodes(
       k_huffmantable[table_idx].symbols, k_huffmantable[table_idx].codelengths);
   auto originalData = decodeHuffman(code, huffmanCodes);
@@ -444,6 +502,7 @@ void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
   // init value variables
   v_quant_blocks = kv_size / v_quant_block_size;
   v_encode_groups = v_channels / v_encode_group_size;
+  v_huffmantable_size = layers * v_encode_groups * v_quant_blocks;
   // init value arrays
   init_2d_array<uint8_t>(v_token_cnt, layers, v_channels);
   init_1d_array<float>(v_buffer, v_buffer_size);
@@ -451,6 +510,8 @@ void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
                          v_quant_block_size * v_channels);
   init_1d_array<uint32_t>(v_quanted_cnt, v_channels);
   init_2d_array<uint32_t>(v_encoded_cnt, layers, v_encode_groups);
+  init_1d_array<uint64_t>(v_bits_cnt, v_huffmantable_size);
+  init_1d_array<HuffmanResult>(v_huffmantable, v_huffmantable_size);
   // init total tokens
   init_2d_array<uint64_t>(total_tokens, layers, k_heads);
   // init value cache
@@ -470,6 +531,8 @@ void cleanup_buffers() {
   cleanup_2d_array<uint8_t>(v_quant_tmp, prompt_size / v_quant_block_size);
   cleanup_1d_array<uint32_t>(v_quanted_cnt);
   cleanup_2d_array<uint32_t>(v_encoded_cnt, layers);
+  cleanup_1d_array<uint64_t>(v_bits_cnt);
+  cleanup_1d_array<HuffmanResult>(v_huffmantable);
   // total tokens buffers
   cleanup_2d_array<uint64_t>(total_tokens, layers);
   // value cache
@@ -545,9 +608,13 @@ void unmapFileFromMemory_com(void *addr, size_t size) {
   }
 }
 extern "C" {
-uint8_t *decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
-                    int64_t layer_id) {
-  return entrypoint_decode(code, token_id, head_id, layer_id);
+uint8_t *key_decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
+                        int64_t layer_id) {
+  return key_entrypoint_decode(code, token_id, head_id, layer_id);
+}
+uint8_t *value_decoding_c(const uint8_t *code, int64_t quant_block_id,
+                          int64_t channel_id, int64_t layer_id) {
+  return nullptr;
 }
 uint8_t *store_fetch_addr_key_c(int head_id, int layer_id) {
   unsigned int abs_token_id = k_token_cnt[layer_id][head_id];
@@ -603,7 +670,9 @@ void update_token_len_value_c(int channel_id, int layer_id) {
   if (v_token_cnt[layer_id][channel_id] == v_quant_block_size) {
     v_quant(channel_id, layer_id);
     v_token_cnt[layer_id][channel_id] = 0;
-    if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1)) {
+    if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) &&
+        (v_quanted_cnt[channel_id] ==
+         v_quanted_cnt[channel_id - (v_encode_group_size - 1)])) {
       value_entrypoint_encode(channel_id, layer_id);
     }
   }

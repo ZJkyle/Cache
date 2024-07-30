@@ -4798,7 +4798,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
           data =  mulmat_fetch_addr_key_c(token_id, head_id, layer_id);
         } else{
           const uint8_t* code_ptr = x[i].code;
-          data = decoding_c(code_ptr, token_id, head_id, layer_id);
+          data = key_decoding_c(code_ptr, token_id, head_id, layer_id);
         }
 
         for (int j = 0; j < qk/2; ++j) {
@@ -4828,19 +4828,23 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
 
     const float * restrict y = vy;
 
-    uint8_t token_len = fetch_value_token_len_c(channel_id, layer_id);
+    uint8_t left_token_len = fetch_value_token_len_c(channel_id, layer_id);
 
     for(int b = 0; b < nb; b++){
-      if(b < nb-1 || token_len%qk == 0){
+      if(b < nb-1 || left_token_len%qk == 0){
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
+        const uint8_t* code = x[b].code;
+        uint8_t* data;
+        data = value_decoding_c(code, b, channel_id, layer_id);
         for(int t = 0; t < qk; t++){
           sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
+        free(data);
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);
-        for (uint8_t t = 0; t < token_len; t++) {
+        for (uint8_t t = 0; t < left_token_len; t++) {
             sumf += (double)(buffer_addr[t]*y[b*qk + t]);
         }
       }

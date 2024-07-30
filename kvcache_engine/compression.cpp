@@ -362,50 +362,47 @@ uint8_t *value_entrypoint_decode(const uint8_t *code, int64_t quant_block_id,
 }
 
 void v_quant(int channel_id, int layer_id) {
-  for (uint32_t c = 0; c < v_encode_group_size; c++) {
+  uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
+                          channel_id * v_quant_block_size;
+  float *buffer_s_addr = v_buffer + buffer_index;
 
-    uint32_t buffer_index = layer_id * (v_channels * v_quant_block_size) +
-                            channel_id * v_quant_block_size;
-    float *buffer_s_addr = v_buffer + buffer_index;
+  float min = FLT_MAX;
+  float max = -FLT_MAX;
 
-    float min = FLT_MAX;
-    float max = -FLT_MAX;
-
-    for (int t = 0; t < v_quant_block_size; t++) {
-      const float v = buffer_s_addr[t];
-      if (v < min) {
-        min = v;
-      }
-      if (v > max) {
-        max = v;
-      }
+  for (int t = 0; t < v_quant_block_size; t++) {
+    const float v = buffer_s_addr[t];
+    if (v < min) {
+      min = v;
     }
-
-    const float d = (max - min) / ((1 << 4) - 1);
-    const float id = d ? 1.0f / d : 0.0f;
-
-    uint32_t s_block_addr_index =
-        channel_id * kv_size +
-        v_encoded_cnt[layer_id][channel_id / v_encode_group_size] +
-        v_quanted_cnt[channel_id];
-    block_q4_v_roy *block_addr = value_cache[layer_id] + s_block_addr_index;
-
-    (*block_addr).d = GGML_FP32_TO_FP16(d);
-    (*block_addr).m = GGML_FP32_TO_FP16(min);
-
-    uint32_t q_tmp_row = v_quanted_cnt[channel_id];
-    uint32_t q_tmp_col = channel_id * v_quant_block_size;
-    uint8_t *quant_tmp_addr = &(v_quant_tmp[q_tmp_row][q_tmp_col]);
-
-    for (int t = 0; t < v_quant_block_size; t++) {
-      const float x0 = (buffer_s_addr[t] - min) * id;
-      const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-      quant_tmp_addr[t] = xi0;
-      (*block_addr).qs[t] = xi0;
+    if (v > max) {
+      max = v;
     }
-
-    v_quanted_cnt[channel_id] += 1;
   }
+
+  const float d = (max - min) / ((1 << 4) - 1);
+  const float id = d ? 1.0f / d : 0.0f;
+
+  uint32_t s_block_addr_index =
+      channel_id * v_quant_blocks +
+      v_encoded_cnt[layer_id][channel_id / v_encode_group_size] +
+      v_quanted_cnt[channel_id];
+  block_q4_v_roy *block_addr = value_cache[layer_id] + s_block_addr_index;
+
+  (*block_addr).d = GGML_FP32_TO_FP16(d);
+  (*block_addr).m = GGML_FP32_TO_FP16(min);
+
+  uint32_t q_tmp_row = v_quanted_cnt[channel_id];
+  uint32_t q_tmp_col = channel_id * v_quant_block_size;
+  uint8_t *quant_tmp_addr = &(v_quant_tmp[q_tmp_row][q_tmp_col]);
+
+  for (int t = 0; t < v_quant_block_size; t++) {
+    const float x0 = (buffer_s_addr[t] - min) * id;
+    const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+    quant_tmp_addr[t] = xi0;
+    (*block_addr).qs[t] = xi0;
+  }
+
+  v_quanted_cnt[channel_id] += 1;
 }
 
 void dump_bits() {
@@ -668,11 +665,11 @@ void update_token_len_value_c(int channel_id, int layer_id) {
   if (v_token_cnt[layer_id][channel_id] == v_quant_block_size) {
     v_quant(channel_id, layer_id);
     v_token_cnt[layer_id][channel_id] = 0;
-    if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) &&
-        (v_quanted_cnt[channel_id] ==
-         v_quanted_cnt[channel_id - (v_encode_group_size - 1)])) {
-      value_entrypoint_encode(channel_id, layer_id);
-    }
+    /* if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) && */
+    /*     (v_quanted_cnt[channel_id] == */
+    /*      v_quanted_cnt[channel_id - (v_encode_group_size - 1)])) { */
+    /*   value_entrypoint_encode(channel_id, layer_id); */
+    /* } */
   }
 }
 

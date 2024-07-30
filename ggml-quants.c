@@ -4839,6 +4839,9 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         data = value_decoding_c(code, b, channel_id, layer_id);
         for(int t = 0; t < qk; t++){
           sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
+          if(data[t] != x[b].qs[t]){
+            printf("error");
+          }
         }
         free(data);
       }else{

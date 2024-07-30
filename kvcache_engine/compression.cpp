@@ -181,9 +181,9 @@ void key_encode(uint8_t *data, size_t size,
 void value_encode(uint8_t *data, size_t size,
                   const std::map<uint8_t, std::string> &codes,
                   block_q4_v_roy *addr, uint64_t table_idx) {
-  for (uint32_t c = 0; c < v_encode_group_size; t++) {
+  for (uint32_t c = 0; c < v_encode_group_size; c++) {
     std::string bitstring;
-    for (size_t t = 0; t < size; i++) {
+    for (size_t t = 0; t < size; t++) {
       bitstring += codes.at(data[c * size + t]);
     }
 
@@ -310,12 +310,10 @@ void key_entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id) {
 }
 
 void value_entrypoint_encode(int channel_id, int layer_id) {
-  int s_channel_id = channel_id - (v_quanted_cnt - 1);
+  int s_channel_id = channel_id - (v_encode_group_size - 1);
   // process multiple groups of encoding within same channel group
-  for (int g = 0; g < v_quanted_cnt[s_channel_id]; g++) {
-    uint32_t q_data_idx = g * (v_quant_block_size * v_channels) +
-                          s_channel_id * v_quant_block_size;
-    uint8_t *data = v_quant_tmp + q_data_idx;
+  for (uint32_t g = 0; g < v_quanted_cnt[s_channel_id]; g++) {
+    uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
 
     uint32_t s_code_idx =
         s_channel_id * kv_size +
@@ -329,9 +327,9 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
 
     auto freq =
         generateFrequencyTable(data, v_quant_block_size * k_encode_group_size);
-    Node *root = buildHuffmanTree(freqs);
+    Node *root = buildHuffmanTree(freq);
     auto codes = generateCanonicalCodes(root);
-    value_encode(data, v_quant_block_size, b_addr, table_idx);
+    value_encode(data, v_quant_block_size, codes, b_addr, table_idx);
     prepareDecodingInfo(codes, v_huffmantable[table_idx]);
     v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size] += 1;
   }
@@ -614,7 +612,7 @@ uint8_t *key_decoding_c(const uint8_t *code, int64_t token_id, int64_t head_id,
 }
 uint8_t *value_decoding_c(const uint8_t *code, int64_t quant_block_id,
                           int64_t channel_id, int64_t layer_id) {
-  return nullptr;
+  return value_entrypoint_decode(code, quant_block_id, channel_id, layer_id);
 }
 uint8_t *store_fetch_addr_key_c(int head_id, int layer_id) {
   unsigned int abs_token_id = k_token_cnt[layer_id][head_id];

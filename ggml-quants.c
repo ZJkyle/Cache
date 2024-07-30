@@ -4834,16 +4834,13 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
       if(b < nb-1 || left_token_len%qk == 0){
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
-        // const uint8_t* code = x[b].code;
-        // uint8_t* data;
-        // data = value_decoding_c(code, b, channel_id, layer_id);
+        const uint8_t* code = x[b].code;
+        uint8_t* data;
+        data = value_decoding_c(code, b, channel_id, layer_id);
         for(int t = 0; t < qk; t++){
-          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * x[b].qs[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
-          // if(data[t] != x[b].qs[t]){
-          //   printf("error");
-          // }
+          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
-        // free(data);
+        free(data);
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);

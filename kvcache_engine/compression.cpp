@@ -421,8 +421,7 @@ void v_quant(int channel_id, int layer_id) {
   for (int t = 0; t < v_quant_block_size; t++) {
     const float x0 = (buffer_s_addr[t] - min) * id;
     const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-    /* quant_tmp_addr[t] = xi0; */
-    (*block_addr).qs[t] = xi0;
+    quant_tmp_addr[t] = xi0;
   }
 
   v_quanted_cnt[channel_id] += 1;
@@ -688,11 +687,11 @@ void update_token_len_value_c(int channel_id, int layer_id) {
   if (v_token_cnt[layer_id][channel_id] == v_quant_block_size) {
     v_quant(channel_id, layer_id);
     v_token_cnt[layer_id][channel_id] = 0;
-    /* if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) && */
-    /*     (v_quanted_cnt[channel_id] == */
-    /*      v_quanted_cnt[channel_id - (v_encode_group_size - 1)])) { */
-    /*   value_entrypoint_encode(channel_id, layer_id); */
-    /* } */
+    if ((channel_id % v_encode_group_size) == (v_encode_group_size - 1) &&
+        (v_quanted_cnt[channel_id] ==
+         v_quanted_cnt[channel_id - (v_encode_group_size - 1)])) {
+      value_entrypoint_encode(channel_id, layer_id);
+    }
   }
 }
 

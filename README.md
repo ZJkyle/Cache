@@ -10,7 +10,7 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ## Quick start
 
 ```bash
-./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  --color -prompt-size 1024 -c 2048 -n 128 -p "what is llm?" -ctk q4_roy -ctv q4_v_roy --ignore-eos
+./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  --color -prompt-size 1024 -c 2048 -n 128 -p "what is llm?" -ctk q4_roy -ctv q4_v_roy -t 16 --ignore-eos
 ```
 
 ## Measure Perplexity
@@ -54,7 +54,7 @@ argument.
 
 - `-m`: directory of models
 - `--color`: colorise output to distinguish prompt and user input from generations
-- `-t`: number of threads to use during generation (default: 16)
+- `-t`: number of threads to use during generation (must be the divisible number of 1024)
 - `-p`: prompt to start generation with (default: empty)
 - `--random-prompt`: start with a randomized prompt
 - `-f FNAME`: prompt file to start generation

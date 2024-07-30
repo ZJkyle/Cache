@@ -60,13 +60,15 @@ void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
 void key_encode(uint8_t *data, size_t size,
                 const std::map<uint8_t, std::string> &codes, uint8_t **addr,
                 uint64_t table_idx);
-void value_encode(uint8_t *data, size_t size,
-                  const std::map<uint8_t, std::string> &codes,
+void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
                   block_q4_v_roy *addr, uint64_t table_idx);
 Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs);
 std::map<uint8_t, std::string> generateCanonicalCodes(Node *root);
-uint8_t *decodeHuffman(const uint8_t *encodedData,
-                       const std::map<std::string, uint8_t> &huffmanCodes);
+uint8_t *key_decodeHuffman(const uint8_t *encodedData,
+                           const std::map<std::string, uint8_t> &huffmanCodes);
+uint8_t *
+value_decodeHuffman(const uint8_t *encodedData,
+                    const std::map<std::string, uint8_t> &huffmanCodes);
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths);
 void key_entrypoint_encode(uint64_t abs_token_id, int head_id, int layer_id);

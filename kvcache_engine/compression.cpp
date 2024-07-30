@@ -178,13 +178,12 @@ void key_encode(uint8_t *data, size_t size,
   }
 }
 
-void value_encode(uint8_t *data, size_t size,
-                  const std::map<uint8_t, std::string> &codes,
+void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
                   block_q4_v_roy *addr, uint64_t table_idx) {
   for (uint32_t c = 0; c < v_encode_group_size; c++) {
     std::string bitstring;
-    for (size_t t = 0; t < size; t++) {
-      bitstring += codes.at(data[c * size + t]);
+    for (size_t t = 0; t < v_quant_block_size; t++) {
+      bitstring += codes.at(data[c * v_quant_block_size + t]);
     }
 
     block_q4_v_roy *encoded = addr + c * v_quant_blocks;
@@ -212,6 +211,7 @@ void value_encode(uint8_t *data, size_t size,
     v_bits_cnt[table_idx] += idx_cnt;
   }
 }
+
 void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
                          HuffmanResult &table) {
   HuffmanResult info;
@@ -267,8 +267,8 @@ std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
   return huffmanCodes;
 }
 
-uint8_t *decodeHuffman(const uint8_t *encodedData,
-                       const std::map<std::string, uint8_t> &huffmanCodes) {
+uint8_t *key_decodeHuffman(const uint8_t *encodedData,
+                           const std::map<std::string, uint8_t> &huffmanCodes) {
   std::string currentCode;
   uint8_t *decodedData =
       (uint8_t *)malloc(k_quant_block_size * sizeof(uint8_t));
@@ -278,6 +278,28 @@ uint8_t *decodeHuffman(const uint8_t *encodedData,
   while (data_cnt < k_quant_block_size) {
     uint8_t byte = encodedData[outer_idx++];
     for (int i = 7; i >= 0 && data_cnt < k_quant_block_size; --i) {
+      currentCode.push_back(((byte >> i) & 1) ? '1' : '0');
+      if (huffmanCodes.count(currentCode)) {
+        decodedData[data_cnt++] = huffmanCodes.at(currentCode);
+        currentCode.clear();
+      }
+    }
+  }
+  return decodedData;
+}
+
+uint8_t *
+value_decodeHuffman(const uint8_t *encodedData,
+                    const std::map<std::string, uint8_t> &huffmanCodes) {
+  std::string currentCode;
+  uint8_t *decodedData =
+      (uint8_t *)malloc(v_quant_block_size * sizeof(uint8_t));
+  uint8_t data_cnt = 0;
+  uint8_t outer_idx = 0;
+
+  while (data_cnt < v_quant_block_size) {
+    uint8_t byte = encodedData[outer_idx++];
+    for (int i = 7; i >= 0 && data_cnt < v_quant_block_size; --i) {
       currentCode.push_back(((byte >> i) & 1) ? '1' : '0');
       if (huffmanCodes.count(currentCode)) {
         decodedData[data_cnt++] = huffmanCodes.at(currentCode);
@@ -316,7 +338,7 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
     uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
 
     uint32_t s_code_idx =
-        s_channel_id * kv_size +
+        s_channel_id * v_quant_blocks +
         v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size];
     block_q4_v_roy *b_addr = value_cache[layer_id] + s_code_idx;
 
@@ -326,11 +348,12 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
         v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size];
 
     auto freq =
-        generateFrequencyTable(data, v_quant_block_size * k_encode_group_size);
+        generateFrequencyTable(data, v_quant_block_size * v_encode_group_size);
     Node *root = buildHuffmanTree(freq);
     auto codes = generateCanonicalCodes(root);
-    value_encode(data, v_quant_block_size, codes, b_addr, table_idx);
+    value_encode(data, codes, b_addr, table_idx);
     prepareDecodingInfo(codes, v_huffmantable[table_idx]);
+
     v_encoded_cnt[layer_id][s_channel_id / v_encode_group_size] += 1;
   }
 
@@ -346,7 +369,7 @@ uint8_t *key_entrypoint_decode(const uint8_t *code, int64_t abs_token_id,
                       abs_token_id / k_encode_group_size;
   auto huffmanCodes = reconstructHuffmanCodes(
       k_huffmantable[table_idx].symbols, k_huffmantable[table_idx].codelengths);
-  auto originalData = decodeHuffman(code, huffmanCodes);
+  auto originalData = key_decodeHuffman(code, huffmanCodes);
   return originalData;
 }
 
@@ -356,8 +379,8 @@ uint8_t *value_entrypoint_decode(const uint8_t *code, int64_t quant_block_id,
                       (channel_id / v_encode_group_size) * v_quant_blocks +
                       quant_block_id;
   auto huffmanCodes = reconstructHuffmanCodes(
-      k_huffmantable[table_idx].symbols, k_huffmantable[table_idx].codelengths);
-  auto originalData = decodeHuffman(code, huffmanCodes);
+      v_huffmantable[table_idx].symbols, v_huffmantable[table_idx].codelengths);
+  auto originalData = value_decodeHuffman(code, huffmanCodes);
   return originalData;
 }
 
@@ -398,7 +421,7 @@ void v_quant(int channel_id, int layer_id) {
   for (int t = 0; t < v_quant_block_size; t++) {
     const float x0 = (buffer_s_addr[t] - min) * id;
     const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-    quant_tmp_addr[t] = xi0;
+    /* quant_tmp_addr[t] = xi0; */
     (*block_addr).qs[t] = xi0;
   }
 

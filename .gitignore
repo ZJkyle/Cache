@@ -129,8 +129,12 @@ nppBackup
 # roy
 /my_models
 /wikitext-2-raw
-/my_prompts/output_kv
-/my_prompts/outputpng
+/my_prompts/output_kv/*
+!/my_prompts/output_kv/.gitkeep
+/my_prompts/output_png/key/*
+!/my_prompts/output_png/key/.gitkeep
+/my_prompts/output_png/value/*
+!/my_prompts/output_png/value/.gitkeep
 /my_prompts/k_compression_rate.csv
 /my_prompts/v_compression_rate.csv
 /my_prompts/testset/original.parquet

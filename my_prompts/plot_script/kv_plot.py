@@ -70,7 +70,7 @@ for layer in range(layers):
     ax.set_zlim([0, 1])  # Ensuring the z-axis starts from 0
 
     # Save the plot
-    filename = f"my_prompts/outputpng/value/value_layer_{layer}.png"
+    filename = f"my_prompts/output_png/value/value_layer_{layer}.png"
     plt.savefig(filename, dpi=300)
     plt.close()
     print("Done: ", filename)

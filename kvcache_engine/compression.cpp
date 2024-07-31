@@ -413,30 +413,29 @@ void dump_bits() {
   uint32_t k_encodes = k_encoded_cnt[0][0];
   uint32_t v_quants = v_total_quanted_cnt[0][0];
 
-  for (uint8_t l = 0; l < layers; l++) {
+  outFile_k << "layer, channel_group, token_group, compression_rate" << "\n";
+  outFile_v << "layer, channel_group, token_group, compression_rate" << "\n";
+
+  for (uint32_t l = 0; l < layers; l++) {
     for (uint32_t k_c = 0; k_c < k_quant_blocks; k_c++) {
       for (uint32_t k_t = 0; k_t < k_encodes; k_t++) {
         uint32_t index = l * (k_encode_groups * k_quant_blocks) +
                          k_c * k_encode_groups + k_t;
+        outFile_k << l << ", " << k_c << ", " << k_t << ", ";
         outFile_k << ((float)k_bits_cnt[index] /
                       (k_quant_block_size * k_encode_group_size / 2));
-        if (k_t != k_encodes - 1) {
-          outFile_k << ",";
-        }
+        outFile_k << "\n";
       }
-      outFile_k << "\n";
     }
     for (uint32_t v_c = 0; v_c < v_encode_groups; v_c++) {
       for (uint32_t v_t = 0; v_t < v_quants; v_t++) {
         uint32_t index =
             l * (v_encode_groups * v_quant_blocks) + v_c * v_quant_blocks + v_t;
+        outFile_v << l << ", " << v_c << ", " << v_t << ", ";
         outFile_v << ((float)v_bits_cnt[index] /
                       (v_quant_block_size * v_encode_group_size / 2));
-        if (v_t != v_quants - 1) {
-          outFile_v << ",";
-        }
+        outFile_v << "\n";
       }
-      outFile_v << "\n";
     }
   }
   outFile_k.close();

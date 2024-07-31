@@ -4820,8 +4820,12 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
 
 void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
 
+    UNUSED(n);
     const int qk = QK4_V_ROY;
-    const int nb = n < qk ? 1 : n / qk;
+    int cur_total_token = fetch_total_token_cnt_c();
+    int nb = cur_total_token % qk ? cur_total_token / qk + 1 : cur_total_token / qk;
+
+
     double sumf = 0.0;
 
     const float * restrict y = vy;

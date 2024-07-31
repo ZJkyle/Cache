@@ -180,7 +180,7 @@ typedef struct {
   uint8_t code[200];
 } block_q4_roy;
 
-#define QK4_V_ROY 64
+#define QK4_V_ROY 16
 typedef struct {
   union {
     struct {

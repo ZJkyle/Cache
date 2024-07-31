@@ -34,6 +34,7 @@ void store_key_code_addr_c(uint8_t *addr, int quant_group_id, int layer_id);
 void update_token_len_key_c(int quant_group_id, int layer_id);
 void update_token_len_value_c(int channel_id, int layer_id);
 bool is_encoded_c(int64_t token_id, int64_t quant_group_id, int64_t layer_id);
+uint32_t fetch_total_token_cnt_c(void);
 uint8_t fetch_value_token_len_c(int64_t channel_id, int64_t layer_id);
 block_q4_v_roy *fetch_value_block_addr_c(int64_t channel_id, int64_t layer_id);
 #ifdef __cplusplus

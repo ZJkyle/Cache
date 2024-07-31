@@ -708,6 +708,7 @@ bool is_encoded_c(int64_t token_id, int64_t quant_group_id, int64_t layer_id) {
            k_huffmantable[index].symbols[1]);
 }
 
+uint32_t fetch_total_token_cnt_c(void) { return k_total_token_cnt[0][0]; }
 uint8_t fetch_value_token_len_c(int64_t channel_id, int64_t layer_id) {
   return v_token_cnt[layer_id][channel_id];
 }

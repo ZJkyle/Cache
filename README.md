@@ -112,6 +112,8 @@ For more information, see [https://huggingface.co/docs/transformers/perplexity](
 
 To learn more how to measure perplexity using llama.cpp, [read this documentation](./examples/perplexity/README.md)
 
+### Evaluation
+See [Eval Llama model on Llama.cpp](https://blog.gopenai.com/how-to-evaluate-local-llms-llama-2-on-a-laptop-with-openai-evals-b1921e104edd)
 ## Other documentations
 
 - [main (cli)](https://github.com/ggerganov/llama.cpp/blob/master/examples/main/README.md)

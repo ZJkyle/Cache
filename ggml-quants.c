@@ -706,46 +706,50 @@ void quantize_row_q4_0(const float * restrict x, void * restrict y, int64_t k) {
 // roy-todo
 void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * restrict y, int64_t k, int head_id, int layer_id) {
     const int qk = QK4_ROY;
-    assert(k == qk);
-    UNUSED(k);
+    const int nb = k/qk;
+    assert(k % qk == 0);
 
-    float min = FLT_MAX;
-    float max = -FLT_MAX;
 
-    for (int j = 0; j < qk; j++) {
-        const float v = x[j];
+    for(int i = 0; i < nb; i++){
+      float min = FLT_MAX;
+      float max = -FLT_MAX;
 
-        if (v < min) min = v;
-        if (v > max) max = v;
+      for (int j = 0; j < qk; j++) {
+          const float v = x[i*qk + j];
+          if (v < min) min = v;
+          if (v > max) max = v;
+      }
+
+      const float d  = (max - min) / ((1 << 4) - 1);
+      const float id = d ? 1.0f/d : 0.0f;
+
+      y[i].d = GGML_FP32_TO_FP16(d);
+      y[i].m = GGML_FP32_TO_FP16(min);
+
+      /* for (int j = 0; j < qk/2; ++j) { */
+      /*     const float x0 = (x[i*qk + 0    + j] - min)*id; */
+      /*     const float x1 = (x[i*qk + qk/2 + j] - min)*id; */
+
+          /* const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f)); */
+          /* const uint8_t xi1 = MIN(15, (int8_t)(x1 + 0.5f)); */
+
+          /* y[i].qs[j]  = xi0; */
+          /* y[i].qs[j] |= xi1 << 4; */
+      /* } */
+
+      int quant_group_id = (head_id*128 + i*qk) / qk;
+
+      uint8_t* tmp_addr = store_fetch_addr_key_c(quant_group_id, layer_id);
+
+      for (int j = 0; j < qk; j++){
+            const float x0 = (x[i*qk+j] - min)*id;
+            const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+            tmp_addr[j] = xi0;
+      }
+
+      store_key_code_addr_c(y[i].code, quant_group_id, layer_id);
+      update_token_len_key_c(quant_group_id, layer_id);
     }
-
-    const float d  = (max - min) / ((1 << 4) - 1);
-    const float id = d ? 1.0f/d : 0.0f;
-
-    (*y).d = GGML_FP32_TO_FP16(d);
-    (*y).m = GGML_FP32_TO_FP16(min);
-
-    /* for (int j = 0; j < qk/2; ++j) { */
-    /*     const float x0 = (x[i*qk + 0    + j] - min)*id; */
-    /*     const float x1 = (x[i*qk + qk/2 + j] - min)*id; */
-
-        /* const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f)); */
-        /* const uint8_t xi1 = MIN(15, (int8_t)(x1 + 0.5f)); */
-
-        /* y[i].qs[j]  = xi0; */
-        /* y[i].qs[j] |= xi1 << 4; */
-    /* } */
-
-    uint8_t* tmp_addr = store_fetch_addr_key_c(head_id, layer_id);
-
-    for (int j = 0; j < qk; j++){
-          const float x0 = (x[j] - min)*id;
-          const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-          tmp_addr[j] = xi0;
-    }
-    uint8_t* code_addr = (*y).code;
-    store_key_code_addr_c(code_addr, head_id, layer_id);
-    update_token_len_key_c(head_id, layer_id);
 }
 
 void quantize_row_q4_v_roy_reference(const float * restrict x, int channel_id, int layer_id) {
@@ -4774,7 +4778,7 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 
 // roy-todo
 void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc, int64_t token_id, int64_t head_id, int64_t layer_id) {
-    const int qk = QK8_ROY;
+    const int qk = QK4_ROY;
     const int nb = n / qk;
     assert(n % qk == 0);
     UNUSED(nrc);
@@ -4788,19 +4792,19 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
     float sumf = 0.0;
 
     for (int i = 0; i < nb; i++) {
+        int quant_group_id = (head_id*128 + i*qk) / qk;
         if(x[i].d==0) {
             break;
         }
         int sumi = 0;
+        bool is_encoded = is_encoded_c(token_id, quant_group_id, layer_id);
         uint8_t* data;
-        bool is_encoded = is_encoded_c(token_id, head_id, layer_id);
         if(!is_encoded){
-          data =  mulmat_fetch_addr_key_c(token_id, head_id, layer_id);
+          data =  mulmat_fetch_addr_key_c(token_id, quant_group_id, layer_id);
         } else{
-          const uint8_t* code_ptr = x[i].code;
-          data = key_decoding_c(code_ptr, token_id, head_id, layer_id);
+          uint8_t encoded_data[qk];
+          data = key_decoding_c(encoded_data, x[i].code, token_id, quant_group_id, layer_id);
         }
-
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
             // const int v1 = (x[i].qs[j] >>   4);
@@ -4809,21 +4813,15 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
 
             sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk/2]);
         }
-
         sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
-        if(is_encoded){
-          free(data);
-        }
     }
-
     *s = sumf;
 }
 
 void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
 
     const int qk = QK4_V_ROY;
-    const int nb = n / qk;
-    assert(n % qk == 0);
+    const int nb = n < qk ? 1 : n / qk;
     double sumf = 0.0;
 
     const float * restrict y = vy;
@@ -4835,12 +4833,11 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
         const uint8_t* code = x[b].code;
-        uint8_t* data;
-        data = value_decoding_c(code, b, channel_id, layer_id);
+        uint8_t encoded_data[qk];
+        uint8_t* data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
         for(int t = 0; t < qk; t++){
           sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
-        free(data);
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);

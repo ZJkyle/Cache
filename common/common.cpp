@@ -1439,12 +1439,12 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     return true;
   }
 
-  if (arg == "--dump_bits") {
+  if (arg == "--dump-bits") {
     params.dump_bits = true;
     return true;
   }
 
-  if (arg == "--output_kv") {
+  if (arg == "--output-kv") {
     params.output_kv = true;
     return true;
   }

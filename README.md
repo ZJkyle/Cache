@@ -2,7 +2,10 @@
 
 ![Manatee](https://github.com/ZJkyle/Cache/blob/main/pexels-koji-kamei-4766707-scaled-e1687878979926-1280x720.jpg)
 
-
+## To-Do
+- [ ] Try[Prompt Cache](### Persistent Interaction)
+- [ ] Eval [Perplexity](### Perplexity (measuring model quality))
+- [ ] [Constraint output](### Constrained output with grammars)
 
 ## Recent changes
 

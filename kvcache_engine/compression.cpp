@@ -26,6 +26,7 @@ block_q4_v_roy *value_cache[layers];
 // *parameters*
 uint32_t kv_size;
 uint32_t prompt_size;
+bool use_encode;
 /////////////
 
 /////////////
@@ -493,12 +494,13 @@ template void cleanup_1d_array<float>(float *&array);
 template void cleanup_1d_array<uint32_t>(uint32_t *&array);
 
 void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
-                     uint32_t v_en_size) {
+                     uint32_t v_en_size, bool enable_encoding) {
   // parameters
   kv_size = n_size;
   prompt_size = p_size;
   k_encode_group_size = k_en_size;
   v_encode_group_size = v_en_size;
+  use_encode = enable_encoding;
   // init key variables
   k_encode_groups = kv_size / k_encode_group_size;
   k_quant_blocks = channels / k_quant_block_size;

@@ -223,11 +223,13 @@ struct gpt_params {
 
   // roy
   bool pre_rope_cache = false;
-  bool cache_mmap = false;
+  bool cache_mmap = true;
   bool use_encode = true;
   uint32_t k_encode_size = 32;
   uint32_t v_encode_size = 32;
   uint32_t prompt_size = 256;
+  bool dump_bits = false;
+  bool output_kv = false;
 };
 
 void gpt_params_handle_model_default(gpt_params &params);

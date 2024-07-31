@@ -593,7 +593,7 @@ int main(int argc, char **argv) {
   }
 
   init_parameters(params.n_ctx, params.prompt_size, params.k_encode_size,
-                  params.v_encode_size);
+                  params.v_encode_size, params.use_encode);
 
   while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
     // predict
@@ -1071,8 +1071,13 @@ int main(int argc, char **argv) {
     llama_free(ctx_guidance);
   }
 
-  dump_bits();
-  // outputKV(ctx);
+  if (params.dump_bits) {
+    dump_bits();
+  }
+  if (params.dump_kv_cache) {
+    outputKV(ctx);
+  }
+
   llama_free(ctx);
   cleanup_buffers();
   llama_free_model(model);

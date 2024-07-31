@@ -7,6 +7,7 @@ const std::vector<ggml_tensor *> *get_key_vector_cpp(const llama_context *ctx);
 const std::vector<ggml_tensor *> *
 get_value_vector_cpp(const llama_context *ctx);
 }
+
 void outputKV(llama_context *ctx) {
   uint32_t num_token = get_kv_self_used(ctx);
   uint32_t n_head_kv = get_n_head_kv(ctx);

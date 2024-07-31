@@ -1402,13 +1402,13 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
     return true;
   }
 
-  if (arg == "--cache-mmap") {
-    params.cache_mmap = true;
+  if (arg == "--disable-encode") {
+    params.use_encode = false;
     return true;
   }
 
-  if (arg == "--disable-encode") {
-    params.use_encode = false;
+  if (arg == "--disable-cache-mmap") {
+    params.cache_mmap = false;
     return true;
   }
 
@@ -1436,6 +1436,16 @@ bool gpt_params_find_arg(int argc, char **argv, const std::string &arg,
       return true;
     }
     params.prompt_size = std::stoi(argv[i]);
+    return true;
+  }
+
+  if (arg == "--dump_bits") {
+    params.dump_bits = true;
+    return true;
+  }
+
+  if (arg == "--output_kv") {
+    params.output_kv = true;
     return true;
   }
 

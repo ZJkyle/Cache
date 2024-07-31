@@ -10,7 +10,7 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ## Quick start
 
 ```bash
-./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  --color -prompt-size 1024 -c 2048 -n 128 -p "what is llm?" -ctk q4_roy -ctv q4_v_roy -t 16 --ignore-eos
+./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0  --color -prompt-size 1024 -c 2048 -n 128 -p "what is large language model?" -ctk q4_roy -ctv q4_v_roy -t 16 --ignore-eos
 ```
 
 ## Measure Perplexity
@@ -67,12 +67,15 @@ argument.
 - `--no-mmap`: Do not memory-map the model. By default, models are mapped into memory, which allows the system to load only the necessary parts of the model as needed. However, if the model is larger than your total amount of RAM or if your system is low on available memory, using mmap might increase the risk of pageouts, negatively impacting performance. Disabling mmap results in slower load times but may reduce pageouts if you're not using --mlock. Note that if the model is larger than the total amount of RAM, turning off mmap would prevent the model from loading at all.
 - `-fa`: enable flash attention
 - `--pre-rope-cache`: make key cached before rope
-- `--cache-mmap`: use self-defined memory map for kv cache (enable by default)
-- `-ctk q4_roy`: enable key compression
-- `-ctv q4_v_roy`: enable value quantization & compression
+- `-ctk q4_roy`: use thesis type for key
+- `-ctv q4_v_roy`: use thesis type for value
 - `-k-encode-size`: size of encoding group size for key (default: 32)
 - `-v-encode-size`: size of encoding group size for value (default: 32)
 - `-prompt-size`: size of prompt length (default: 256)
+- `--disable-cache-mmap`: disable memory map for KV cache (enable by default)
+- `--disable-encode`: disable encoding (KV cache are encoded by default)
+- `--dump_bits`: dump compression rate of KV cache
+- `--output_kv`: dump KV cache (should use f16 for KV cache)
 
 ### Extended Context Size
 

@@ -114,6 +114,10 @@ To learn more how to measure perplexity using llama.cpp, [read this documentatio
 
 ### Evaluation
 See [Eval Llama model on Llama.cpp](https://blog.gopenai.com/how-to-evaluate-local-llms-llama-2-on-a-laptop-with-openai-evals-b1921e104edd)
+* After install evals, may encounter some errors like:"AttributeError: module 'openai' has no attribute 'error'"
+* To solve we can simply downgrade openai=0.28
+* Test result of Llama3.1-8b-instruct
+
 ## Other documentations
 
 - [main (cli)](https://github.com/ggerganov/llama.cpp/blob/master/examples/main/README.md)

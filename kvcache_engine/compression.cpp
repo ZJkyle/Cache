@@ -554,27 +554,34 @@ void cleanup_buffers() {
 void init_kv_cache() {
   std::string mmap_dir = "kvcache_engine/mmap_data/";
   for (int i = 0; i < layers; i++) {
-    std::string filename_k = mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
-    std::string filename_v = mmap_dir + "layer_" + std::to_string(i) + "_v.dat";
-    size_t file_size_k = kv_size * k_quant_blocks * sizeof(block_q4_roy);
-    size_t file_size_v = channels * v_quant_blocks * sizeof(block_q4_v_roy);
-    int fd_k;
-    int fd_v;
-    void *mapped_k = mapFileToMemory_com(filename_k, file_size_k, fd_k);
-    void *mapped_v = mapFileToMemory_com(filename_v, file_size_v, fd_v);
-    if (mapped_k == MAP_FAILED || mapped_v == MAP_FAILED) {
-      abort();
+    if (use_cache_mmap) {
+      std::string filename_k =
+          mmap_dir + "layer_" + std::to_string(i) + "_k.dat";
+      std::string filename_v =
+          mmap_dir + "layer_" + std::to_string(i) + "_v.dat";
+      size_t file_size_k = kv_size * k_quant_blocks * sizeof(block_q4_roy);
+      size_t file_size_v = channels * v_quant_blocks * sizeof(block_q4_v_roy);
+      int fd_k;
+      int fd_v;
+      void *mapped_k = mapFileToMemory_com(filename_k, file_size_k, fd_k);
+      void *mapped_v = mapFileToMemory_com(filename_v, file_size_v, fd_v);
+      if (mapped_k == MAP_FAILED || mapped_v == MAP_FAILED) {
+        abort();
+      }
+      // key cache
+      block_q4_roy *k_data = static_cast<block_q4_roy *>(mapped_k);
+      memset(k_data, 0, file_size_k);
+      key_cache[i] = k_data;
+      close(fd_k);
+      // value cache
+      block_q4_v_roy *v_data = static_cast<block_q4_v_roy *>(mapped_v);
+      memset(v_data, 0, file_size_v);
+      value_cache[i] = v_data;
+      close(fd_v);
+    } else {
+      key_cache[i] = new block_q4_roy[kv_size * k_quant_blocks];
+      value_cache[i] = new block_q4_v_roy[channels * v_quant_blocks];
     }
-    // key cache
-    block_q4_roy *k_data = static_cast<block_q4_roy *>(mapped_k);
-    memset(k_data, 0, file_size_k);
-    key_cache[i] = k_data;
-    close(fd_k);
-    // value cache
-    block_q4_v_roy *v_data = static_cast<block_q4_v_roy *>(mapped_v);
-    memset(v_data, 0, file_size_v);
-    value_cache[i] = v_data;
-    close(fd_v);
   }
 }
 
@@ -582,8 +589,13 @@ void clear_kv_cache() {
   size_t file_size_v = channels * v_quant_blocks * sizeof(block_q4_v_roy);
   size_t file_size_k = kv_size * k_quant_blocks * sizeof(block_q4_roy);
   for (size_t i = 0; i < layers; i++) {
-    unmapFileFromMemory_com(key_cache[i], file_size_k);
-    unmapFileFromMemory_com(value_cache[i], file_size_v);
+    if (use_cache_mmap) {
+      unmapFileFromMemory_com(key_cache[i], file_size_k);
+      unmapFileFromMemory_com(value_cache[i], file_size_v);
+    } else {
+      delete[] key_cache[i];
+      delete[] value_cache[i];
+    }
   }
 }
 
@@ -630,6 +642,7 @@ void unmapFileFromMemory_com(void *addr, size_t size) {
             addr, size);
   }
 }
+
 extern "C" {
 uint8_t *key_decoding_c(uint8_t *data, const uint8_t *code, int64_t token_id,
                         int64_t quant_group_id, int64_t layer_id) {

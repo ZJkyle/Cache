@@ -26,7 +26,7 @@
 Run a basic completion using this command:
 
 ```bash
-./llama-cli -m ../models/Meta-Llama-3-8B-Instruct/Meta-Llama-3-8B-Instruct-Q4_K_M.gguf -p "I believe the meaning of life is" -n -2 -t 12 -c 256 --keep -1
+./llama-cli -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -p "I believe the meaning of life is" -n -2 -t 12 -c 256 --keep -1
 
 -n: generate infinite context
     -1: until EOS / timing or memory limit
@@ -47,7 +47,7 @@ See [this page]([./examples/main/README.md](https://github.com/ggerganov/llama.c
 Example usage:
 
 ```bash
-./llama-server -m ../models/Meta-Llama-3-8B-Instruct/Meta-Llama-3-8B-Instruct-Q4_K_M.ggu --host 0.0.0.0 --port 8080  -t 12 -c 256 --keep ?
+./llama-server -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf --host 0.0.0.0 --port 8080  -t 12 -c 256 --keep ?
 
 # Basic web UI can be accessed via browser: http://localhost:8080
 # Chat completion endpoint: http://localhost:8080/v1/chat/completions

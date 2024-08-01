@@ -71,16 +71,13 @@ uint32_t *v_bits_cnt;
 HuffmanResult *v_huffmantable;
 /////////////
 
-std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
-                                                   size_t size) {
+Node *buildHuffmanTree(const uint8_t *data, size_t size) {
+
   std::map<uint8_t, unsigned> freqs;
   for (size_t i = 0; i < size; i++) {
     freqs[data[i]]++;
   }
-  return freqs;
-}
 
-Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs) {
   std::priority_queue<Node *, std::vector<Node *>,
                       std::function<bool(Node *, Node *)>>
       pq([](Node *l, Node *r) { return l->freq > r->freq; });
@@ -299,10 +296,7 @@ void key_entrypoint_encode(uint32_t abs_token_id, int quant_group_id,
                        quant_group_id * k_encode_groups +
                        s_token_id / k_encode_group_size;
   uint8_t *data = k_buffer + q_idx;
-
-  auto freq =
-      generateFrequencyTable(data, k_quant_block_size * k_encode_group_size);
-  Node *root = buildHuffmanTree(freq);
+  Node *root = buildHuffmanTree(data, k_quant_block_size * k_encode_group_size);
   auto codes = generateCanonicalCodes(root);
 
   block_q4_roy *b_addr = key_cache[layer_id] + block_idx;
@@ -329,9 +323,8 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
             v_encode_groups +
         s_channel_id / v_encode_group_size;
 
-    auto freq =
-        generateFrequencyTable(data, v_quant_block_size * v_encode_group_size);
-    Node *root = buildHuffmanTree(freq);
+    Node *root =
+        buildHuffmanTree(data, v_quant_block_size * v_encode_group_size);
     auto codes = generateCanonicalCodes(root);
     value_encode(data, codes, b_addr, table_idx);
     prepareDecodingInfo(codes, v_huffmantable[table_idx]);

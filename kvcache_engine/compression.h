@@ -58,15 +58,13 @@ struct HuffmanResult {
 };
 
 // Functions
-std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
-                                                   size_t size);
 void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
                          struct HuffmanResult &table);
 void key_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
                 block_q4_roy *addr, uint32_t table_idx);
 void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
                   block_q4_v_roy *addr, uint32_t table_idx);
-Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs);
+Node *buildHuffmanTree(const uint8_t *data, size_t size);
 std::map<uint8_t, std::string> generateCanonicalCodes(Node *root);
 uint8_t *decodeHuffman(uint8_t *data, const uint8_t *encodedData,
                        uint32_t quant_block_size,

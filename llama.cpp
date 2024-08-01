@@ -15766,16 +15766,10 @@ struct llama_context * llama_new_context_with_model(
             LLAMA_LOG_INFO("%s: graph splits = %d\n", __func__, n_splits);
         }
     }
-    // if(ctx->cparams.cache_mmap){
-        mmap_cache(ctx);
-    // }
     return ctx;
 }
 
 void llama_free(struct llama_context * ctx) {
-    // if (ctx->cparams.cache_mmap){
-      unmap_cache(ctx);
-    // }
     delete ctx;
 }
 

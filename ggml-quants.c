@@ -704,7 +704,7 @@ void quantize_row_q4_0(const float * restrict x, void * restrict y, int64_t k) {
 }
 
 // roy-todo
-void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * restrict y, int64_t k, int head_id, int layer_id) {
+void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head_id, int layer_id) {
     const int qk = QK4_ROY;
     const int nb = k/qk;
     assert(k % qk == 0);
@@ -723,8 +723,12 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
       const float d  = (max - min) / ((1 << 4) - 1);
       const float id = d ? 1.0f/d : 0.0f;
 
-      y[i].d = GGML_FP32_TO_FP16(d);
-      y[i].m = GGML_FP32_TO_FP16(min);
+      int quant_group_id = (head_id*128 + i*qk) / qk;
+
+      block_q4_roy* y = store_fetch_block_addr_key_c(quant_group_id, layer_id);
+
+      (*y).d = GGML_FP32_TO_FP16(d);
+      (*y).m = GGML_FP32_TO_FP16(min);
 
       /* for (int j = 0; j < qk/2; ++j) { */
       /*     const float x0 = (x[i*qk + 0    + j] - min)*id; */
@@ -737,8 +741,6 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
           /* y[i].qs[j] |= xi1 << 4; */
       /* } */
 
-      int quant_group_id = (head_id*128 + i*qk) / qk;
-
       uint8_t* tmp_addr = store_fetch_addr_key_c(quant_group_id, layer_id);
 
       for (int j = 0; j < qk; j++){
@@ -747,7 +749,6 @@ void quantize_row_q4_roy_reference(const float * restrict x, block_q4_roy * rest
             tmp_addr[j] = xi0;
       }
 
-      store_key_code_addr_c(y[i].code, quant_group_id, layer_id);
       update_token_len_key_c(quant_group_id, layer_id);
     }
 }
@@ -4823,23 +4824,19 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 }
 
 // roy-todo
-void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void * restrict vx, size_t bx, const void * restrict vy, size_t by, int nrc, int64_t token_id, int64_t head_id, int64_t layer_id) {
+void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict vy, int64_t token_id, int64_t head_id, int64_t layer_id) {
     const int qk = QK4_ROY;
     const int nb = n / qk;
     assert(n % qk == 0);
-    UNUSED(nrc);
-    UNUSED(bx);
-    UNUSED(by);
-    UNUSED(bs);
 
-    const block_q4_roy * restrict x = vx;
     const block_q8_roy * restrict y = vy;
     // scalar
     float sumf = 0.0;
 
     for (int i = 0; i < nb; i++) {
         int quant_group_id = (head_id*128 + i*qk) / qk;
-        if(x[i].d==0) {
+        const block_q4_roy * restrict x = mulmat_fetch_block_addr_key_c(token_id, quant_group_id, layer_id);
+        if((*x).d==0) {
             break;
         }
         int sumi = 0;
@@ -4849,7 +4846,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
           data =  mulmat_fetch_addr_key_c(token_id, quant_group_id, layer_id);
         } else{
           uint8_t encoded_data[qk];
-          data = key_decoding_c(encoded_data, x[i].code, token_id, quant_group_id, layer_id);
+          data = key_decoding_c(encoded_data, (*x).code, token_id, quant_group_id, layer_id);
         }
         for (int j = 0; j < qk/2; ++j) {
             // const int v0 = (x[i].qs[j] & 0x0F);
@@ -4859,7 +4856,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
 
             sumi += (v0 * y[i].qs[j]) + (v1 * y[i].qs[j + qk/2]);
         }
-        sumf += (GGML_FP16_TO_FP32(x[i].d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32(x[i].m)*GGML_FP16_TO_FP32(y[i].s);
+        sumf += (GGML_FP16_TO_FP32((*x).d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32((*x).m)*GGML_FP16_TO_FP32(y[i].s);
     }
     *s = sumf;
 }

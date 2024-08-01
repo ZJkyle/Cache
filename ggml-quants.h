@@ -14,8 +14,7 @@ extern "C" {
 // Quantization
 void quantize_row_q4_0_reference(const float *GGML_RESTRICT x,
                                  block_q4_0 *GGML_RESTRICT y, int64_t k);
-void quantize_row_q4_roy_reference(const float *GGML_RESTRICT x,
-                                   block_q4_roy *GGML_RESTRICT y, int64_t k,
+void quantize_row_q4_roy_reference(const float *GGML_RESTRICT x, int64_t k,
                                    int head_id, int layer_id);
 void quantize_row_q4_v_roy_reference(const float *GGML_RESTRICT x,
                                      int channel_id, int layer_id);
@@ -152,11 +151,9 @@ void dequantize_row_iq3_s(const block_iq3_s *GGML_RESTRICT x,
 void ggml_vec_dot_q4_0_q8_0(int n, float *GGML_RESTRICT s, size_t bs,
                             const void *GGML_RESTRICT vx, size_t bx,
                             const void *GGML_RESTRICT vy, size_t by, int nrc);
-void ggml_vec_dot_q4_roy_q8_roy(int n, float *GGML_RESTRICT s, size_t bs,
-                                const void *GGML_RESTRICT vx, size_t bx,
-                                const void *GGML_RESTRICT vy, size_t by,
-                                int nrc, int64_t token_id, int64_t head_id,
-                                int64_t layer_id);
+void ggml_vec_dot_q4_roy_q8_roy(int n, float *GGML_RESTRICT s,
+                                const void *GGML_RESTRICT vy, int64_t token_id,
+                                int64_t head_id, int64_t layer_id);
 void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float *GGML_RESTRICT s,
                                     const void *GGML_RESTRICT vy,
                                     int64_t channel_id, int64_t layer_id);

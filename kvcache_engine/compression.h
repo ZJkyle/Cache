@@ -26,11 +26,14 @@ uint8_t *value_decoding_c(uint8_t *data, const uint8_t *code,
                           int64_t quant_block_id, int64_t channel_id,
                           int64_t layer_id);
 uint8_t *store_fetch_addr_key_c(int quant_group_id, int layer_id);
+block_q4_roy *store_fetch_block_addr_key_c(int quant_group_id, int layer_id);
 float *store_fetch_addr_value_c(int channel_id, int layer_id);
 uint8_t *mulmat_fetch_addr_key_c(int64_t token_id, int64_t quant_group_id,
                                  int64_t layer_id);
+block_q4_roy *mulmat_fetch_block_addr_key_c(int64_t token_id,
+                                            int64_t quant_group_id,
+                                            int layer_id);
 float *mulmat_fetch_addr_value_c(int64_t channel_id, int64_t layer_id);
-void store_key_code_addr_c(uint8_t *addr, int quant_group_id, int layer_id);
 void update_token_len_key_c(int quant_group_id, int layer_id);
 void update_token_len_value_c(int channel_id, int layer_id);
 bool is_encoded_c(int64_t token_id, int64_t quant_group_id, int64_t layer_id);
@@ -60,9 +63,9 @@ std::map<uint8_t, unsigned> generateFrequencyTable(const uint8_t *data,
 void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
                          struct HuffmanResult &table);
 void key_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
-                uint8_t **addr, uint64_t table_idx);
+                block_q4_roy *addr, uint32_t table_idx);
 void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
-                  block_q4_v_roy *addr, uint64_t table_idx);
+                  block_q4_v_roy *addr, uint32_t table_idx);
 Node *buildHuffmanTree(const std::map<uint8_t, unsigned> &freqs);
 std::map<uint8_t, std::string> generateCanonicalCodes(Node *root);
 uint8_t *decodeHuffman(uint8_t *data, const uint8_t *encodedData,
@@ -70,7 +73,7 @@ uint8_t *decodeHuffman(uint8_t *data, const uint8_t *encodedData,
                        const std::map<std::string, uint8_t> &huffmanCodes);
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths);
-void key_entrypoint_encode(uint64_t abs_token_id, int quant_group_id,
+void key_entrypoint_encode(uint32_t abs_token_id, int quant_group_id,
                            int layer_id);
 void value_entrypoint_encode(int channel_id, int layer_id);
 uint8_t *key_entrypoint_decode(uint8_t *data, const uint8_t *code,
@@ -81,14 +84,15 @@ uint8_t *value_entrypoint_decode(uint8_t *data, const uint8_t *code,
                                  int64_t layer_id);
 void v_quant(int channel_id, int layer_id);
 void dump_bits();
-void init_value_cache();
-void clear_value_cache();
+void init_kv_cache();
+void clear_kv_cache();
 //
 bool ensureFileSize_com(int fd, size_t size);
 void *mapFileToMemory_com(const std::string &filename, size_t size, int &fd);
 void unmapFileFromMemory_com(void *addr, size_t size);
 void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
-                     uint32_t v_en_size, bool enable_encoding);
+                     uint32_t v_en_size, bool enable_encoding,
+                     bool enable_cache_mmap);
 void cleanup_buffers();
 template <typename T> void cleanup_1d_array(T *&array);
 template <typename T> void init_1d_array(T *&array, size_t ne);

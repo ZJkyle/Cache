@@ -911,11 +911,11 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         [GGML_TYPE_Q4_ROY] = {
         .type_name                = "q4_roy",
         .blck_size                = QK4_ROY,
-        .type_size                = sizeof(block_q4_roy),
+        .type_size                = sizeof(int8_t), // unused
         .is_quantized             = true,
-        .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
-        .from_float               = quantize_row_q4_roy,
-        .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy,
+        // .to_float                 = (ggml_to_float_t) dequantize_row_q4_1,
+        // .from_float               = quantize_row_q4_roy,
+        // .from_float_reference     = (ggml_from_float_t) quantize_row_q4_roy,
         // .vec_dot                  = ggml_vec_dot_q4_0_q8_0,
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
@@ -937,7 +937,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         [GGML_TYPE_Q4_V_ROY] = {
         .type_name                = "q4_v_roy",
         .blck_size                = 1,
-        .type_size                = sizeof(int8_t),
+        .type_size                = sizeof(int8_t), // unused
         .is_quantized             = false,
         // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
         // .from_float               = quantize_row_q4_v_roy,
@@ -8683,7 +8683,7 @@ static void ggml_compute_forward_dup_f32(
                         id += rs * (ne01 - ir1);
                     }
                 }
-            } else if (type_traits[dst->type].from_float) {
+            } else if (type_traits[dst->type].from_float || dst->type == GGML_TYPE_Q4_ROY) {
                 ggml_from_float_t const quantize_row_q = type_traits[dst->type].from_float;
 
                 size_t id = 0;
@@ -8697,7 +8697,7 @@ static void ggml_compute_forward_dup_f32(
                         for (int i01 = ir0; i01 < ir1; i01++) {
                             const float * src0_ptr = (float *) ((char *) src0->data + i01*nb01 + i02*nb02 + i03*nb03);
                             if(dst->type == GGML_TYPE_Q4_ROY){
-                              quantize_row_q4_roy_reference(src0_ptr, (block_q4_roy*)(dst_ptr + id), ne00, i01, layer_id);
+                              quantize_row_q4_roy_reference(src0_ptr, ne00, i01, layer_id);
                             }else{
                               quantize_row_q(src0_ptr, dst_ptr + id, ne00);
                             }
@@ -12466,7 +12466,7 @@ static void ggml_compute_forward_mul_mat_one_chunk(
 
                 for (int64_t ir0 = iir0; ir0 < iir0 + blck_0 && ir0 < ir0_end; ir0 += num_rows_per_vec_dot) {
                     if(src0->type == GGML_TYPE_Q4_ROY){
-                      ggml_vec_dot_q4_roy_q8_roy(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot, ir0, i02, layer_id);
+                      ggml_vec_dot_q4_roy_q8_roy(ne00, &tmp[ir0 - iir0], src1_col, ir0, i02, layer_id);
                     }else if(src0->type == GGML_TYPE_Q4_V_ROY){
                       ggml_vec_dot_q4_v_roy_q8_v_roy(ne00, &tmp[ir0 - iir0], src1_col, ir0 + i02 * 128, layer_id);
                     }else{

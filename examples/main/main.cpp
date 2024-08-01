@@ -593,7 +593,7 @@ int main(int argc, char **argv) {
   }
 
   init_parameters(params.n_ctx, params.prompt_size, params.k_encode_size,
-                  params.v_encode_size, params.use_encode);
+                  params.v_encode_size, params.use_encode, params.cache_mmap);
 
   while ((n_remain != 0 && !is_antiprompt) || params.interactive) {
     // predict

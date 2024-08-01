@@ -170,7 +170,7 @@ void key_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
       current_byte <<= (8 - bit_count);
       encoded[idx_cnt++] = current_byte;
     }
-    if (idx_cnt > 200) {
+    if (idx_cnt > (QK4_ROY / 2 * 3)) {
       // too long;
       abort();
     }
@@ -204,7 +204,7 @@ void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
       current_byte <<= (8 - bit_count);
       encoded->code[idx_cnt++] = current_byte;
     }
-    if (idx_cnt > 200) {
+    if (idx_cnt > (QK4_V_ROY / 2 * 3)) {
       // too long;
       abort();
     }

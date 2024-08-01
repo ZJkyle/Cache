@@ -919,7 +919,7 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         // .vec_dot                  = ggml_vec_dot_q4_0_q8_0,
         .vec_dot_type             = GGML_TYPE_Q8_ROY,
 #if defined (__ARM_FEATURE_MATMUL_INT8)
-        .nrows                    = 2,
+        .nrows                    =
 #else
         .nrows                    = 1,
 #endif
@@ -937,15 +937,25 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         [GGML_TYPE_Q4_V_ROY] = {
         .type_name                = "q4_v_roy",
         .blck_size                = 1,
-        .type_size                = sizeof(float),
+        .type_size                = sizeof(int8_t),
         .is_quantized             = false,
         // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
         // .from_float               = quantize_row_q4_v_roy,
         // .from_float_reference     = (ggml_from_float_t) ggml_fp32_to_fp16_row,
-        .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f32,
-        .vec_dot_type             = GGML_TYPE_F32,
+        // .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f32,
+        .vec_dot_type             = GGML_TYPE_Q8_V_ROY,
         .nrows                    = 1,
-    }
+    },
+        [GGML_TYPE_Q8_V_ROY] = {
+        .type_name                = "q8_v_roy",
+        .blck_size                = QK8_V_ROY,
+        .type_size                = sizeof(block_q8_v_roy),
+        .is_quantized             = true,
+        .from_float               = quantize_row_q8_v_roy,
+        .from_float_reference     = (ggml_from_float_t) quantize_row_q8_v_roy_reference,
+        .vec_dot_type             = GGML_TYPE_Q8_V_ROY,
+        .nrows                    = 1,
+    },
 };
 
 // For internal test use
@@ -12458,7 +12468,7 @@ static void ggml_compute_forward_mul_mat_one_chunk(
                     if(src0->type == GGML_TYPE_Q4_ROY){
                       ggml_vec_dot_q4_roy_q8_roy(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot, ir0, i02, layer_id);
                     }else if(src0->type == GGML_TYPE_Q4_V_ROY){
-                      ggml_vec_dot_q4_v_roy(ne00, &tmp[ir0 - iir0], src1_col, ir0 + i02 * 128, layer_id);
+                      ggml_vec_dot_q4_v_roy_q8_v_roy(ne00, &tmp[ir0 - iir0], src1_col, ir0 + i02 * 128, layer_id);
                     }else{
                       vec_dot(ne00, &tmp[ir0 - iir0], (num_rows_per_vec_dot > 1 ? 16 : 0), src0_row + ir0 * nb01, (num_rows_per_vec_dot > 1 ? nb01 : 0), src1_col, (num_rows_per_vec_dot > 1 ? src1_col_stride : 0), num_rows_per_vec_dot);
                     }
@@ -14335,6 +14345,7 @@ static void ggml_compute_forward_clamp(
         case GGML_TYPE_Q8_0:
         case GGML_TYPE_Q8_1:
         case GGML_TYPE_Q8_ROY:
+        case GGML_TYPE_Q8_V_ROY:
         case GGML_TYPE_Q2_K:
         case GGML_TYPE_Q3_K:
         case GGML_TYPE_Q4_K:

@@ -1219,7 +1219,6 @@ void quantize_row_q8_0(const float * restrict x, void * restrict vy, int64_t k) 
 // reference implementation for deterministic creation of model files
 
 
-// roy-todo
 void quantize_row_q8_roy_reference(const float * restrict x, block_q8_roy * restrict y, int64_t k) {
     const int qk = QK8_ROY;
     assert(k % qk == 0);
@@ -1252,6 +1251,48 @@ void quantize_row_q8_roy_reference(const float * restrict x, block_q8_roy * rest
         }
 
         y[i].s = GGML_FP32_TO_FP16(sum*d);
+    }
+}
+void quantize_row_q8_v_roy_reference(const float * restrict x, block_q8_v_roy * restrict y, int64_t k) {
+    const int qk = QK8_V_ROY;
+    UNUSED(k);
+    int cur_total_token = fetch_total_token_cnt_c();
+    const int nb = cur_total_token % qk ? cur_total_token / qk + 1 : cur_total_token / qk;
+    int left = cur_total_token % qk;
+
+    for (int i = 0; i < nb; i++) {
+        if(i < nb-1 || left == 0){
+          float amax = 0.0f; // absolute max
+
+          for (int j = 0; j < qk; j++) {
+              const float v = x[i*qk + j];
+              amax = MAX(amax, fabsf(v));
+          }
+
+          const float d = amax / ((1 << 7) - 1);
+          const float id = d ? 1.0f/d : 0.0f;
+
+          y[i].d = GGML_FP32_TO_FP16(d);
+
+          int sum = 0;
+
+          for (int j = 0; j < qk/2; ++j) {
+              const float v0 = x[i*qk        + j]*id;
+              const float v1 = x[i*qk + qk/2 + j]*id;
+
+              y[i].qs[       j] = roundf(v0);
+              y[i].qs[qk/2 + j] = roundf(v1);
+
+              sum += y[i].qs[       j];
+              sum += y[i].qs[qk/2 + j];
+          }
+
+          y[i].s = GGML_FP32_TO_FP16(sum*d);
+        }else{
+          for(int j = 0; j < left; ++j){
+            y[i].f[j] = x[i*qk + j];
+          }
+        }
     }
 }
 void quantize_row_q8_1_reference(const float * restrict x, block_q8_1 * restrict y, int64_t k) {
@@ -1370,6 +1411,11 @@ void quantize_row_q8_roy(const float * restrict x, void * restrict vy, int64_t k
 
 }
 
+void quantize_row_q8_v_roy(const float * restrict x, void * restrict vy, int64_t k) {
+    block_q8_v_roy * restrict y = vy;
+    // scalar
+    quantize_row_q8_v_roy_reference(x, y, k);
+}
 
 void quantize_row_q8_1(const float * restrict x, void * restrict vy, int64_t k) {
     assert(k % QK8_1 == 0);
@@ -4818,8 +4864,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, size_t bs, const void
     *s = sumf;
 }
 
-void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
-
+void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
     UNUSED(n);
     const int qk = QK4_V_ROY;
     int cur_total_token = fetch_total_token_cnt_c();
@@ -4828,7 +4873,7 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
 
     double sumf = 0.0;
 
-    const float * restrict y = vy;
+    const block_q8_v_roy * restrict y = vy;
 
     uint8_t left_token_len = fetch_value_token_len_c(channel_id, layer_id);
 
@@ -4839,14 +4884,18 @@ void ggml_vec_dot_q4_v_roy(int n, float * restrict s, const void * restrict vy, 
         const uint8_t* code = x[b].code;
         uint8_t encoded_data[qk];
         uint8_t* data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
-        for(int t = 0; t < qk; t++){
-          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
+        int sumi = 0;
+        for(int t = 0; t < qk / 2; ++t){
+          const int v0 = (data[t]);
+          const int v1 = (data[t + qk/2]);
+          sumi += (v0 * y[b].qs[t]) + (v1 * y[b].qs[t +qk/2]);
         }
+        sumf += (double)((GGML_FP16_TO_FP32(x[b].d)*GGML_FP16_TO_FP32(y[b].d))*sumi + GGML_FP16_TO_FP32(x[b].m)*GGML_FP16_TO_FP32(y[b].s));
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);
         for (uint8_t t = 0; t < left_token_len; t++) {
-            sumf += (double)(buffer_addr[t]*y[b*qk + t]);
+            sumf += (double)(buffer_addr[t]*y[b].f[t]);
         }
       }
     }

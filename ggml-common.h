@@ -177,20 +177,8 @@ typedef struct {
     } GGML_COMMON_AGGR;
     ggml_half2 dm;
   };
-  uint8_t code[200];
+  uint8_t code[QK4_ROY / 2 * 3];
 } block_q4_roy;
-
-#define QK4_V_ROY 16
-typedef struct {
-  union {
-    struct {
-      ggml_half d; // delta
-      ggml_half m; // min
-    } GGML_COMMON_AGGR;
-    ggml_half2 dm;
-  };
-  uint8_t code[200];
-} block_q4_v_roy;
 
 #define QK8_ROY QK4_ROY
 typedef struct {
@@ -205,6 +193,32 @@ typedef struct {
 } block_q8_roy;
 static_assert(sizeof(block_q8_roy) == 2 * sizeof(ggml_half) + QK8_ROY,
               "wrong q8_roy block size/padding");
+#define QK4_V_ROY 64
+typedef struct {
+  union {
+    struct {
+      ggml_half d; // delta
+      ggml_half m; // min
+    } GGML_COMMON_AGGR;
+    ggml_half2 dm;
+  };
+  uint8_t code[QK4_V_ROY / 2 * 3];
+} block_q4_v_roy;
+
+#define QK8_V_ROY QK4_V_ROY
+typedef struct {
+  union {
+    struct {
+      ggml_half d; // delta
+      ggml_half s; // d * sum(qs[i])
+    } GGML_COMMON_AGGR;
+    ggml_half2 ds;
+  };
+  union {
+    int8_t qs[QK8_V_ROY]; // quants
+    float f[QK8_V_ROY];   // left
+  };
+} block_q8_v_roy;
 
 #define QK5_0 32
 typedef struct {

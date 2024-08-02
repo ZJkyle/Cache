@@ -118,7 +118,6 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root,
   }
 
   std::map<uint8_t, std::string> canonicalCodes;
-  HuffmanResult info;
   int code = 0;
   int previousLength = 0; // To track the previous group's code length
   size_t len = 0;
@@ -136,8 +135,8 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root,
     for (auto &ch : lengthGroup.second) {
       canonicalCodes[ch] = std::bitset<32>(code).to_string().substr(
           32 - lengthGroup.first, lengthGroup.first);
-      info.symbols[len] = ch;
-      info.codelengths[len] = static_cast<uint8_t>(lengthGroup.first);
+      table.symbols[len] = ch;
+      table.codelengths[len] = static_cast<uint8_t>(lengthGroup.first);
       code++;
       len++;
     }
@@ -146,22 +145,9 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root,
         lengthGroup.first; // Update previousLength after processing this group
   }
 
-  std::vector<size_t> indices(len);
-  std::iota(indices.begin(), indices.end(), 0);
-  std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
-    return info.codelengths[i] < info.codelengths[j] ||
-           (info.codelengths[i] == info.codelengths[j] &&
-            info.symbols[i] < info.symbols[j]);
-  });
-
-  for (size_t i = 0; i < 16; ++i) {
-    if (i < len) {
-      table.symbols[i] = info.symbols[indices[i]];
-      table.codelengths[i] = info.codelengths[indices[i]];
-    } else {
-      table.symbols[i] = 255;
-      table.codelengths[i] = 255;
-    }
+  for (size_t i = len; i < 16; ++i) {
+    table.symbols[i] = 255;
+    table.codelengths[i] = 255;
   }
   return canonicalCodes;
 }

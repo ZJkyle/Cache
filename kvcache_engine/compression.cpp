@@ -96,7 +96,8 @@ Node *buildHuffmanTree(const uint8_t *data, size_t size) {
   }
   return pq.top();
 }
-std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
+std::map<uint8_t, std::string> generateCanonicalCodes(Node *root,
+                                                      HuffmanResult &table) {
   std::map<uint8_t, unsigned> codeLengths;
   std::function<void(Node *, std::string)> traverse = [&](Node *node,
                                                           std::string code) {
@@ -117,8 +118,10 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
   }
 
   std::map<uint8_t, std::string> canonicalCodes;
+  HuffmanResult info;
   int code = 0;
   int previousLength = 0; // To track the previous group's code length
+  size_t len = 0;
 
   for (auto &lengthGroup : sortedByLength) {
     sort(lengthGroup.second.begin(), lengthGroup.second.end());
@@ -133,11 +136,32 @@ std::map<uint8_t, std::string> generateCanonicalCodes(Node *root) {
     for (auto &ch : lengthGroup.second) {
       canonicalCodes[ch] = std::bitset<32>(code).to_string().substr(
           32 - lengthGroup.first, lengthGroup.first);
+      info.symbols[len] = ch;
+      info.codelengths[len] = static_cast<uint8_t>(lengthGroup.first);
       code++;
+      len++;
     }
 
     previousLength =
         lengthGroup.first; // Update previousLength after processing this group
+  }
+
+  std::vector<size_t> indices(len);
+  std::iota(indices.begin(), indices.end(), 0);
+  std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
+    return info.codelengths[i] < info.codelengths[j] ||
+           (info.codelengths[i] == info.codelengths[j] &&
+            info.symbols[i] < info.symbols[j]);
+  });
+
+  for (size_t i = 0; i < 16; ++i) {
+    if (i < len) {
+      table.symbols[i] = info.symbols[indices[i]];
+      table.codelengths[i] = info.codelengths[indices[i]];
+    } else {
+      table.symbols[i] = 255;
+      table.codelengths[i] = 255;
+    }
   }
   return canonicalCodes;
 }
@@ -210,36 +234,6 @@ void value_encode(uint8_t *data, const std::map<uint8_t, std::string> &codes,
   }
 }
 
-void prepareDecodingInfo(const std::map<uint8_t, std::string> &canonicalCodes,
-                         HuffmanResult &table) {
-  HuffmanResult info;
-
-  size_t len = 0;
-  for (const auto &pair : canonicalCodes) {
-    info.symbols[len] = pair.first;
-    info.codelengths[len] = static_cast<uint8_t>(pair.second.length());
-    ++len;
-  }
-
-  std::vector<size_t> indices(len);
-  std::iota(indices.begin(), indices.end(), 0);
-  std::sort(indices.begin(), indices.end(), [&](size_t i, size_t j) {
-    return info.codelengths[i] < info.codelengths[j] ||
-           (info.codelengths[i] == info.codelengths[j] &&
-            info.symbols[i] < info.symbols[j]);
-  });
-
-  for (size_t i = 0; i < 16; ++i) {
-    if (i < len) {
-      table.symbols[i] = info.symbols[indices[i]];
-      table.codelengths[i] = info.codelengths[indices[i]];
-    } else {
-      table.symbols[i] = 255;
-      table.codelengths[i] = 255;
-    }
-  }
-}
-
 std::map<std::string, uint8_t> reconstructHuffmanCodes(uint8_t *symbols,
                                                        uint8_t *codeLengths) {
   std::map<std::string, uint8_t> huffmanCodes;
@@ -292,16 +286,15 @@ void key_entrypoint_encode(uint32_t abs_token_id, int quant_group_id,
       quant_group_id * (k_encode_group_size * k_quant_block_size);
   uint32_t s_token_id = abs_token_id - k_encode_group_size;
   uint32_t block_idx = s_token_id * k_quant_blocks + quant_group_id;
+  block_q4_roy *b_addr = key_cache[layer_id] + block_idx;
   uint32_t table_idx = layer_id * (k_quant_blocks * k_encode_groups) +
                        quant_group_id * k_encode_groups +
                        s_token_id / k_encode_group_size;
   uint8_t *data = k_buffer + q_idx;
-  Node *root = buildHuffmanTree(data, k_quant_block_size * k_encode_group_size);
-  auto codes = generateCanonicalCodes(root);
 
-  block_q4_roy *b_addr = key_cache[layer_id] + block_idx;
+  Node *root = buildHuffmanTree(data, k_quant_block_size * k_encode_group_size);
+  auto codes = generateCanonicalCodes(root, k_huffmantable[table_idx]);
   key_encode(data, codes, b_addr, table_idx);
-  prepareDecodingInfo(codes, k_huffmantable[table_idx]);
 
   k_encoded_cnt[layer_id][quant_group_id] += 1;
 }
@@ -310,24 +303,21 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
   int s_channel_id = channel_id - (v_encode_group_size - 1);
   // process multiple groups of encoding within same channel group
   for (uint32_t g = 0; g < v_quanted_cnt[s_channel_id]; g++) {
-    uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
-
     uint32_t s_code_idx =
         s_channel_id * v_quant_blocks +
         v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size];
     block_q4_v_roy *b_addr = value_cache[layer_id] + s_code_idx;
-
     uint32_t table_idx =
         layer_id * (v_encode_groups * v_quant_blocks) +
         v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size] *
             v_encode_groups +
         s_channel_id / v_encode_group_size;
+    uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
 
     Node *root =
         buildHuffmanTree(data, v_quant_block_size * v_encode_group_size);
-    auto codes = generateCanonicalCodes(root);
+    auto codes = generateCanonicalCodes(root, v_huffmantable[table_idx]);
     value_encode(data, codes, b_addr, table_idx);
-    prepareDecodingInfo(codes, v_huffmantable[table_idx]);
 
     v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size] += 1;
   }

@@ -6,7 +6,7 @@ nltk.download("punkt")
 accumulated_texts = []
 total_tokens = 0
 newline_cnt = 0
-token_limit = 128
+token_limit = 256
 minimum_tokens_for_newline = 32
 df = pd.read_parquet("original.parquet")
 

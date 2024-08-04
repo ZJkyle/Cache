@@ -10,7 +10,7 @@ Part of llama.cpp (e.g. regard to KV Cache management function) would be injecte
 ## Quick start
 
 ```bash
-./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0 --color -prompt-size 1024 -c 2048 -n 128 -p "what is large language model?" -ctk q4_roy -ctv q4_v_roy -t 16 --ignore-eos
+./build/bin/main -m my_models/q4/llama3-8B-16k-Q4-1.gguf --repeat-penalty 1.15 --repeat-last-n 128 --temp 0 --color -prompt-size 1024 -c 1024 -n 128 -p "what is large language model?" -ctk q4_roy -ctv q4_v_roy -t 16 --ignore-eos --dump-bits -k-encode-size 32 -v-encode-size 32
 ```
 
 ## Measure Perplexity

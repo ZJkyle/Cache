@@ -755,9 +755,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
             block_addr[j] = xi0;
       }
 
-      if(enable_encode){
-        update_token_len_key_c(quant_group_id, layer_id);
-      }
+      update_token_len_key_c(quant_group_id, layer_id);
     }
 }
 
@@ -4843,7 +4841,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
 
     for (int i = 0; i < nb; i++) {
         int quant_group_id = (head_id*128 + i*qk) / qk;
-        const block_q4_roy * restrict x = mulmat_fetch_block_addr_key_c(token_id, quant_group_id, layer_id);
+        block_q4_roy * restrict x = mulmat_fetch_block_addr_key_c(token_id, quant_group_id, layer_id);
         if((*x).d==0) {
             break;
         }
@@ -4888,9 +4886,9 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
       if(b < nb-1 || left_token_len%qk == 0){
         // have quantized and compressed
         block_q4_v_roy* x = fetch_value_block_addr_c(channel_id, layer_id);
-        const uint8_t* code = x[b].code;
+        uint8_t* code = x[b].code;
         uint8_t encoded_data[qk];
-        uint8_t* data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
+        uint8_t* data;
         if(enable_encode){
           data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
         }else{

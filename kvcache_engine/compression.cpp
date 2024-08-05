@@ -666,7 +666,8 @@ float *mulmat_fetch_addr_value_c(int64_t channel_id, int64_t layer_id) {
 void update_token_len_key_c(int quant_group_id, int layer_id) {
   k_token_cnt[layer_id][quant_group_id] += 1;
   k_total_token_cnt[layer_id][quant_group_id] += 1;
-  if (k_token_cnt[layer_id][quant_group_id] == k_encode_group_size) {
+  if (use_encode &&
+      k_token_cnt[layer_id][quant_group_id] == k_encode_group_size) {
     key_entrypoint_encode(k_total_token_cnt[layer_id][quant_group_id],
                           quant_group_id, layer_id);
     k_token_cnt[layer_id][quant_group_id] = 0;

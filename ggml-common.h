@@ -168,7 +168,7 @@ typedef struct {
 static_assert(sizeof(block_q4_1) == 2 * sizeof(ggml_half) + QK4_1 / 2,
               "wrong q4_1 block size/padding");
 
-#define QK4_ROY 16
+#define QK4_ROY 128
 typedef struct {
   union {
     struct {

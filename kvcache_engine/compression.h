@@ -40,6 +40,7 @@ bool is_encoded_c(int64_t token_id, int64_t quant_group_id, int64_t layer_id);
 uint32_t fetch_total_token_cnt_c(void);
 uint8_t fetch_value_token_len_c(int64_t channel_id, int64_t layer_id);
 block_q4_v_roy *fetch_value_block_addr_c(int64_t channel_id, int64_t layer_id);
+bool enable_encoding_c(void);
 #ifdef __cplusplus
 }
 

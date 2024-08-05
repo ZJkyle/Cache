@@ -289,22 +289,23 @@ void value_entrypoint_encode(int channel_id, int layer_id) {
   int s_channel_id = channel_id - (v_encode_group_size - 1);
   // process multiple groups of encoding within same channel group
   for (uint32_t g = 0; g < v_quanted_cnt[s_channel_id]; g++) {
-    uint32_t s_code_idx =
-        s_channel_id * v_quant_blocks +
-        v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size];
-    block_q4_v_roy *b_addr = value_cache[layer_id] + s_code_idx;
-    uint32_t table_idx =
-        layer_id * (v_encode_groups * v_quant_blocks) +
-        v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size] *
-            v_encode_groups +
-        s_channel_id / v_encode_group_size;
-    uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
+    if (use_encode) {
+      uint32_t s_code_idx =
+          s_channel_id * v_quant_blocks +
+          v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size];
+      block_q4_v_roy *b_addr = value_cache[layer_id] + s_code_idx;
+      uint32_t table_idx =
+          layer_id * (v_encode_groups * v_quant_blocks) +
+          v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size] *
+              v_encode_groups +
+          s_channel_id / v_encode_group_size;
+      uint8_t *data = v_quant_tmp[g] + s_channel_id * v_quant_block_size;
 
-    Node *root =
-        buildHuffmanTree(data, v_quant_block_size * v_encode_group_size);
-    auto codes = generateCanonicalCodes(root, v_huffmantable[table_idx]);
-    value_encode(data, codes, b_addr, table_idx);
-
+      Node *root =
+          buildHuffmanTree(data, v_quant_block_size * v_encode_group_size);
+      auto codes = generateCanonicalCodes(root, v_huffmantable[table_idx]);
+      value_encode(data, codes, b_addr, table_idx);
+    }
     v_total_quanted_cnt[layer_id][s_channel_id / v_encode_group_size] += 1;
   }
 
@@ -368,15 +369,19 @@ void v_quant(int channel_id, int layer_id) {
 
   (*block_addr).d = GGML_FP32_TO_FP16(d);
   (*block_addr).m = GGML_FP32_TO_FP16(min);
-
-  uint32_t q_tmp_row = v_quanted_cnt[channel_id];
-  uint32_t q_tmp_col = channel_id * v_quant_block_size;
-  uint8_t *quant_tmp_addr = &(v_quant_tmp[q_tmp_row][q_tmp_col]);
+  uint8_t *quant_addr;
+  if (use_encode) {
+    uint32_t q_tmp_row = v_quanted_cnt[channel_id];
+    uint32_t q_tmp_col = channel_id * v_quant_block_size;
+    quant_addr = &(v_quant_tmp[q_tmp_row][q_tmp_col]);
+  } else {
+    quant_addr = (*block_addr).code;
+  }
 
   for (uint32_t t = 0; t < v_quant_block_size; t++) {
     const float x0 = (buffer_s_addr[t] - min) * id;
     const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-    quant_tmp_addr[t] = xi0;
+    quant_addr[t] = xi0;
   }
 
   v_quanted_cnt[channel_id] += 1;
@@ -712,6 +717,7 @@ block_q4_roy *mulmat_fetch_block_addr_key_c(int64_t token_id,
   uint32_t index = token_id * k_quant_blocks + quant_group_id;
   return key_cache[layer_id] + index;
 }
+bool enable_encoding_c(void) { return use_encode; }
 #endif
 #ifdef __cplusplus
 }

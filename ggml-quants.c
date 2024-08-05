@@ -708,6 +708,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
     const int qk = QK4_ROY;
     const int nb = k/qk;
     assert(k % qk == 0);
+    bool enable_encode = enable_encoding_c();
 
 
     for(int i = 0; i < nb; i++){
@@ -741,15 +742,22 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
           /* y[i].qs[j] |= xi1 << 4; */
       /* } */
 
-      uint8_t* tmp_addr = store_fetch_addr_key_c(quant_group_id, layer_id);
+      uint8_t* block_addr;
 
+      if(enable_encode){
+        block_addr = store_fetch_addr_key_c(quant_group_id, layer_id);
+      }else{
+        block_addr = (*y).code;
+      }
       for (int j = 0; j < qk; j++){
             const float x0 = (x[i*qk+j] - min)*id;
             const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
-            tmp_addr[j] = xi0;
+            block_addr[j] = xi0;
       }
 
-      update_token_len_key_c(quant_group_id, layer_id);
+      if(enable_encode){
+        update_token_len_key_c(quant_group_id, layer_id);
+      }
     }
 }
 
@@ -4828,7 +4836,7 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
     const int qk = QK4_ROY;
     const int nb = n / qk;
     assert(n % qk == 0);
-
+    bool enable_encode = enable_encoding_c();
     const block_q8_roy * restrict y = vy;
     // scalar
     float sumf = 0.0;
@@ -4842,7 +4850,9 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
         int sumi = 0;
         bool is_encoded = is_encoded_c(token_id, quant_group_id, layer_id);
         uint8_t* data;
-        if(!is_encoded){
+        if(!enable_encode){
+          data = (*x).code;
+        }else if(!is_encoded){
           data =  mulmat_fetch_addr_key_c(token_id, quant_group_id, layer_id);
         } else{
           uint8_t encoded_data[qk];
@@ -4866,7 +4876,7 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
     const int qk = QK4_V_ROY;
     int cur_total_token = fetch_total_token_cnt_c();
     int nb = cur_total_token % qk ? cur_total_token / qk + 1 : cur_total_token / qk;
-
+    bool enable_encode = enable_encoding_c();
 
     double sumf = 0.0;
 
@@ -4881,6 +4891,11 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
         const uint8_t* code = x[b].code;
         uint8_t encoded_data[qk];
         uint8_t* data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
+        if(enable_encode){
+          data = value_decoding_c(encoded_data, code, b, channel_id, layer_id);
+        }else{
+          data = code;
+        }
         int sumi = 0;
         for(int t = 0; t < qk / 2; ++t){
           const int v0 = (data[t]);

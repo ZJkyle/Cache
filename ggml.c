@@ -933,13 +933,13 @@ static const ggml_type_traits_t type_traits[GGML_TYPE_COUNT] = {
         [GGML_TYPE_Q4_V_ROY] = {
         .type_name                = "q4_v_roy",
         .blck_size                = 1,
-        .type_size                = sizeof(int8_t), // unused
+        .type_size                = sizeof(float), // unused
         .is_quantized             = false,
         // .to_float                 = (ggml_to_float_t) ggml_fp16_to_fp32_row,
         // .from_float               = quantize_row_q4_v_roy,
         // .from_float_reference     = (ggml_from_float_t) ggml_fp32_to_fp16_row,
         // .vec_dot                  = (ggml_vec_dot_t) ggml_vec_dot_f32,
-        .vec_dot_type             = GGML_TYPE_Q8_V_ROY,
+        .vec_dot_type             = GGML_TYPE_F32,
         .nrows                    = 1,
     },
         [GGML_TYPE_Q8_V_ROY] = {

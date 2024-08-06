@@ -494,22 +494,7 @@ void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
   v_huffmantable_size = layers * v_encode_groups * v_quant_blocks;
   // init value arrays
   init_2d_array<uint8_t>(v_token_cnt, layers, channels);
-  if (v_quant_block_size > 64) {
-    std::string mmap_dir = "kvcache_engine/v_buffer/";
-    std::string filename_v = mmap_dir + "v_buffer.dat";
-    size_t buffer_size_v = v_buffer_size * sizeof(float);
-    int fd_v;
-    void *mapped_v = mapFileToMemory_com(filename_v, buffer_size_v, fd_v);
-    if (mapped_v == MAP_FAILED) {
-      abort();
-    }
-    float *v_data = static_cast<float *>(mapped_v);
-    memset(v_data, 0, buffer_size_v);
-    v_buffer = v_data;
-    close(fd_v);
-  } else {
-    init_1d_array<float>(v_buffer, v_buffer_size);
-  }
+  init_1d_array<float>(v_buffer, v_buffer_size);
   init_2d_array<uint8_t>(v_quant_tmp, prompt_size / v_quant_block_size,
                          v_quant_block_size * channels);
   init_1d_array<uint32_t>(v_quanted_cnt, channels);
@@ -530,12 +515,7 @@ void cleanup_buffers() {
   cleanup_1d_array<HuffmanResult>(k_huffmantable);
   // value buffers
   cleanup_2d_array<uint8_t>(v_token_cnt, layers);
-  if (v_quant_block_size > 64) {
-    size_t buffer_size_v = v_buffer_size * sizeof(float);
-    unmapFileFromMemory_com(v_buffer, buffer_size_v);
-  } else {
-    cleanup_1d_array<float>(v_buffer);
-  }
+  cleanup_1d_array<float>(v_buffer);
   cleanup_2d_array<uint8_t>(v_quant_tmp, prompt_size / v_quant_block_size);
   cleanup_1d_array<uint32_t>(v_quanted_cnt);
   cleanup_2d_array<uint32_t>(v_total_quanted_cnt, layers);

@@ -4878,7 +4878,7 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
 
     double sumf = 0.0;
 
-    const block_q8_v_roy * restrict y = vy;
+    const float * restrict y = vy;
 
     uint8_t left_token_len = fetch_value_token_len_c(channel_id, layer_id);
 
@@ -4894,18 +4894,14 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
         }else{
           data = code;
         }
-        int sumi = 0;
-        for(int t = 0; t < qk / 2; ++t){
-          const int v0 = (data[t]);
-          const int v1 = (data[t + qk/2]);
-          sumi += (v0 * y[b].qs[t]) + (v1 * y[b].qs[t +qk/2]);
+        for(int t = 0; t < qk; ++t){
+          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
         }
-        sumf += (double)((GGML_FP16_TO_FP32(x[b].d)*GGML_FP16_TO_FP32(y[b].d))*sumi + GGML_FP16_TO_FP32(x[b].m)*GGML_FP16_TO_FP32(y[b].s));
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);
         for (uint8_t t = 0; t < left_token_len; t++) {
-            sumf += (double)(buffer_addr[t]*y[b].f[t]);
+            sumf += (double)(buffer_addr[t]*y[b*qk+t]);
         }
       }
     }

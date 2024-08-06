@@ -72,7 +72,6 @@ argument.
 - `-k-encode-size`: size of encoding group size for key (default: 32)
 - `-v-encode-size`: size of encoding group size for value (default: 32)
 - `-prompt-size`: size of prompt length (default: 256)
-- `--disable-cache-mmap`: disable memory map for KV cache (enable by default)
 - `--disable-encode`: disable encoding (KV cache are encoded by default)
 - `--dump-bits`: dump compression rate of KV cache
 - `--output-kv`: dump KV cache (should use f16 for KV cache)

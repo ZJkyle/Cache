@@ -3,8 +3,7 @@
 ![Manatee](./photoes/pexels-koji-kamei-4766707-scaled-e1687878979926-1280x720.jpg)
 
 ## To-Do
-- [ ] Eval [Perplexity](#perplexity-measuring-model-quality)
-- [ ] Add Simple-math Evals
+- [x] Eval [Perplexity](#perplexity-measuring-model-quality)
 - [ ] Try [Prompt Cache](#persistent-interaction)
 - [ ] [Constraint output](#constrained-output-with-grammars)
 
@@ -79,7 +78,7 @@ For authoring more complex JSON grammars, you can also check out [Grammar Intrin
 ## Tools
 
 ### Prepare and Quantize
-[Models](#models)
+[Use Models](#models)
 
     # install Python dependencies
     python3 -m pip install -r requirements.txt
@@ -95,19 +94,8 @@ For authoring more complex JSON grammars, you can also check out [Grammar Intrin
 
 ### Perplexity (measuring model quality)
 
-You can use the `perplexity` example to measure perplexity over a given prompt (lower perplexity is better).
-For more information, see [Hugging Face Perplexity](https://huggingface.co/docs/transformers/perplexity).
+`./llama-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf --kl-divergence-base kld/llama3.1_8B_F16.kld `
 
-To learn more about how to measure perplexity using llama.cpp, [read this documentation](./examples/perplexity/README.md).
-
-### Evaluation
-
-See [Eval Llama model on Llama.cpp](https://blog.gopenai.com/how-to-evaluate-local-llms-llama-2-on-a-laptop-with-openai-evals-b1921e104edd)
-
-* After installing evals, you may encounter some errors like: "AttributeError: module 'openai' has no attribute 'error'"
-* To solve this, simply downgrade openai to version 0.28
-
-* Test result of Llama3.1-8b-instruct
 
 ## Other documentations
 

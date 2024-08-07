@@ -168,7 +168,7 @@ typedef struct {
 static_assert(sizeof(block_q4_1) == 2 * sizeof(ggml_half) + QK4_1 / 2,
               "wrong q4_1 block size/padding");
 
-#define QK4_ROY 64
+#define QK4_ROY 128
 typedef struct {
   union {
     struct {
@@ -193,12 +193,13 @@ typedef struct {
 } block_q8_roy;
 static_assert(sizeof(block_q8_roy) == 2 * sizeof(ggml_half) + QK8_ROY,
               "wrong q8_roy block size/padding");
+
 #define QK4_V_ROY 128
 typedef struct {
   union {
     struct {
       ggml_half d; // delta
-      ggml_half m; // min
+      ggml_half a; // anchor
     } GGML_COMMON_AGGR;
     ggml_half2 dm;
   };

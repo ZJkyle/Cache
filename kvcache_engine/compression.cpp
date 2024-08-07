@@ -1,4 +1,5 @@
 #include "ggml.h"
+#include <math.h>
 #include <sys/mman.h>
 #define GGML_COMMON_IMPL_C
 #include "ggml-common.h"
@@ -345,30 +346,35 @@ void v_quant(int channel_id, int layer_id) {
                           channel_id * v_quant_block_size;
   float *buffer_s_addr = v_buffer + buffer_index;
 
-  float min = FLT_MAX;
-  float max = -FLT_MAX;
-
-  for (uint32_t t = 0; t < v_quant_block_size; t++) {
-    const float v = buffer_s_addr[t];
-    if (v < min) {
-      min = v;
-    }
-    if (v > max) {
-      max = v;
-    }
-  }
-
-  const float d = (max - min) / ((1 << 4) - 1);
-  const float id = d ? 1.0f / d : 0.0f;
-
   uint32_t s_block_addr_index =
       channel_id * v_quant_blocks +
       v_total_quanted_cnt[layer_id][channel_id / v_encode_group_size] +
       v_quanted_cnt[channel_id];
   block_q4_v_roy *block_addr = value_cache[layer_id] + s_block_addr_index;
 
+  float amax = 0.0f;
+  float max = 0.0f;
+
+  for (uint32_t t = v_quant_block_size - 1; t > 0; t--) {
+    buffer_s_addr[t] -= buffer_s_addr[t - 1];
+  }
+
+  (*block_addr).a = GGML_FP32_TO_FP16(buffer_s_addr[0]);
+  buffer_s_addr[0] = 0;
+
+  for (uint32_t t = 1; t < v_quant_block_size; t++) {
+    const float v = buffer_s_addr[t];
+    if (amax < fabsf(v)) {
+      amax = fabsf(v);
+      max = v;
+    }
+  }
+
+  const float d = max / -8;
+  const float id = d ? 1.0f / d : 0.0f;
+
   (*block_addr).d = GGML_FP32_TO_FP16(d);
-  (*block_addr).m = GGML_FP32_TO_FP16(min);
+  /* (*block_addr).m = GGML_FP32_TO_FP16(min); */
   uint8_t *quant_addr;
   if (use_encode) {
     uint32_t q_tmp_row = v_quanted_cnt[channel_id];
@@ -379,8 +385,8 @@ void v_quant(int channel_id, int layer_id) {
   }
 
   for (uint32_t t = 0; t < v_quant_block_size; t++) {
-    const float x0 = (buffer_s_addr[t] - min) * id;
-    const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
+    const float x0 = buffer_s_addr[t] * id;
+    const uint8_t xi0 = MIN(15, (int8_t)(x0 + 8.5f));
     quant_addr[t] = xi0;
   }
 

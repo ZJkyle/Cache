@@ -4894,9 +4894,18 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
         }else{
           data = code;
         }
-        for(int t = 0; t < qk; ++t){
-          sumf += (double)((GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m))*y[b*qk + t]);
+        float last_val;
+        last_val = GGML_FP16_TO_FP32(x[b].a);
+        sumf += (double)(last_val*y[b*qk]);
+        for(int t = 1; t < qk; ++t){
+          float cur_val = last_val + GGML_FP16_TO_FP32(x[b].d) * (data[t]-8);
+          sumf += (double)(cur_val*y[b*qk + t]);
+          last_val = cur_val;
         }
+        // for(int t = 0; t < qk; ++t){
+        //   float cur_val = GGML_FP16_TO_FP32(x[b].d) * data[t] + GGML_FP16_TO_FP32(x[b].m);
+        //   sumf += (double)(cur_val*y[b*qk + t]);
+        // }
       }else{
         // fetch buffer
         float* buffer_addr = mulmat_fetch_addr_value_c(channel_id, layer_id);

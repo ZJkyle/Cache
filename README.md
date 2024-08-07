@@ -4,7 +4,6 @@
 
 ## To-Do
 - [x] Eval [Perplexity](#perplexity-measuring-model-quality)
-- [ ] Try [Prompt Cache](#persistent-interaction)
 - [ ] [Constraint output](#constrained-output-with-grammars)
 
 ## Recent changes
@@ -47,23 +46,6 @@ Example usage:
 
     # Basic web UI can be accessed via browser: http://localhost:8080
     # Chat completion endpoint: http://localhost:8080/v1/chat/completions
-
-### Persistent Interaction
-
-The prompt, user inputs, and model generations can be saved and resumed across calls to `./llama-cli` by leveraging `--prompt-cache` and `--prompt-cache-all`. The `./examples/chat-persistent.sh` script demonstrates this with support for long-running, resumable chat sessions. To use this example, you must provide a file to cache the initial chat prompt and a directory to save the chat session, and may optionally provide the same variables as `chat-13B.sh`. The same prompt cache can be reused for new chat sessions. Note that both prompt cache and chat directory are tied to the initial prompt (`PROMPT_TEMPLATE`) and the model file.
-
-    # Start a new chat
-    PROMPT_CACHE_FILE=chat.prompt.bin CHAT_SAVE_DIR=./chat/default ./examples/chat-persistent.sh
-
-    # Resume that chat
-    PROMPT_CACHE_FILE=chat.prompt.bin CHAT_SAVE_DIR=./chat/default ./examples/chat-persistent.sh
-
-    # Start a different chat with the same prompt/model
-    PROMPT_CACHE_FILE=chat.prompt.bin CHAT_SAVE_DIR=./chat/another ./examples/chat-persistent.sh
-
-    # Different prompt cache for different prompt/model
-    PROMPT_TEMPLATE=./prompts/chat-with-bob.txt PROMPT_CACHE_FILE=bob.prompt.bin \
-        CHAT_SAVE_DIR=./chat/bob ./examples/chat-persistent.sh
 
 ### Constrained output with grammars
 

@@ -78,6 +78,7 @@ For authoring more complex JSON grammars, you can also check out [Grammar Intrin
 
 * Llama3.1-8B
 `./llama-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf --kl-divergence-base kld/llama3.1_8B_F16.kld `
+
 | Quantization | Model size [GiB] | PPL                   |
 | ------------ | ---------------- | --------------------- |
 | f16          | 14.97            | 7.3170 +/- 0.04676    |

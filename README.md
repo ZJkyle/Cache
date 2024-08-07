@@ -47,16 +47,6 @@ Example usage:
     # Basic web UI can be accessed via browser: http://localhost:8080
     # Chat completion endpoint: http://localhost:8080/v1/chat/completions
 
-### Constrained output with grammars
-
-`llama.cpp` supports grammars to constrain model output. For example, you can force the model to output JSON only:
-
-    ./llama-cli -m ./models/13B/ggml-model-q4_0.gguf -n 256 --grammar-file grammars/json.gbnf -p 'Request: schedule a call at 8pm; Command:'
-
-The `grammars/` folder contains a handful of sample grammars. To write your own, check out the [GBNF Guide](./grammars/README.md).
-
-For authoring more complex JSON grammars, you can also check out [Grammar Intrinsic Labs](https://grammar.intrinsiclabs.ai/), a browser app that lets you write TypeScript interfaces which it compiles to GBNF grammars that you can save for local use. Note that the app is built and maintained by members of the community, please file any issues or FRs on [its repo](http://github.com/intrinsiclabsai/gbnfgen) and not this one.
-
 ## Tools
 
 ### Prepare and Quantize

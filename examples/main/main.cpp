@@ -1074,7 +1074,7 @@ int main(int argc, char **argv) {
   if (params.dump_bits) {
     dump_bits();
   }
-  if (params.dump_kv_cache) {
+  if (params.output_kv) {
     outputKV(ctx);
   }
 

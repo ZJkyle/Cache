@@ -40,48 +40,38 @@
 ### Before Optimziation
 ./../llama-bench -m ../../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -pg 8,8 -pg 8,16 -pg 8,32 -pg 8,64 -pg 16,8 -pg 16,16 -pg 16,32 -pg 16,64 -n 0 -embd 1 -t 12
 
+#####  改過 bench.cpp
 
-```
-./../llama-bench -m ../../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -p 8,32,128,512 -n 0 -embd 1 -t 12
-
-| model                          |       size |     params | backend    | threads |       embd |          test |              t/s |
-| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |           pp8 |     25.46 ± 0.69 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |          pp32 |     28.65 ± 0.48 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |         pp128 |     28.60 ± 0.79 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |         pp512 |     28.25 ± 0.64 |
-```
-
-./../llama-bench -m ../../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -n 8,32,128,512 -n 0 -embd 1 -t 12
-| model                          |       size |     params | backend    | threads |       embd |          test |              t/s |
-| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |         pp512 |     28.50 ± 0.37 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |           tg8 |      9.75 ± 0.25 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |          tg32 |     10.11 ± 0.10 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |         tg128 |      9.81 ± 0.22 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |       6 |          1 |         tg512 |      9.62 ± 0.31 |
+root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -p 4,8,16,32 -n 0 -embd 1 -t 12
+| model                          |       size |     params | backend    | threads |       embd |          test |       prompt t/s |          gen t/s |        total t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: | ---------------: | ---------------: |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |           pp4 |             27.18 |              0.00 |     27.25 ± 1.41 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |           pp8 |             32.01 |              0.00 |     32.06 ± 1.35 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |          pp16 |             35.13 |              0.00 |     35.14 ± 0.76 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |          pp32 |             34.57 |              0.00 |     34.67 ± 1.92 |
 
 root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -n 8,32,128,512 -n 0 -embd 1 -t 12
-| model                          |       size |     params | backend    | threads |       embd |          test |              t/s |
-| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         pp512 |     35.51 ± 0.87 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |           tg8 |      8.43 ± 0.81 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |          tg32 |      8.44 ± 0.69 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg128 |      7.20 ± 0.41 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg512 |      7.27 ± 0.59 |
+| model                          |       size |     params | backend    | threads |       embd |          test |       prompt t/s |          gen t/s |        total t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: | ---------------: | ---------------: |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         pp512 |             36.49 |              0.00 |     36.50 ± 0.58 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |           tg8 |              0.00 |              9.09 |      9.09 ± 0.21 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |          tg32 |              0.00 |              8.72 |      8.78 ± 0.75 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg128 |              0.00 |              8.52 |      8.55 ± 0.49 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg512 |              0.00 |              8.39 |      8.40 ± 0.15 |
 
 root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -pg 8,8 -pg 8,16 -pg 8,32 -pg 8,64 -pg 16,8 -pg 16,16 -pg 16,32 -pg 16,64 -n 0 -embd 1 -t 12
-| model                          |       size |     params | backend    | threads |       embd |          test |              t/s |
-| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         pp512 |     35.47 ± 0.41 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |       pp8+tg8 |     12.01 ± 0.73 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg16 |     10.04 ± 0.70 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg32 |      8.97 ± 0.44 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg64 |      8.30 ± 0.46 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp16+tg8 |     16.05 ± 0.47 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg16 |     12.41 ± 0.88 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg32 |     10.44 ± 0.52 |
-| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg64 |      8.98 ± 0.50 |
+| model                          |       size |     params | backend    | threads |       embd |          test |       prompt t/s |          gen t/s |        total t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: | ---------------: | ---------------: |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         pp512 |             36.62 |              0.00 |     36.62 ± 0.43 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |       pp8+tg8 |             32.08 |              8.53 |     13.56 ± 1.02 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg16 |             30.56 |              8.63 |     11.45 ± 1.11 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg32 |             31.50 |              8.52 |     10.05 ± 0.85 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp8+tg64 |             29.63 |              7.14 |      7.87 ± 0.86 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |      pp16+tg8 |             32.85 |              7.31 |     15.34 ± 1.59 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg16 |             33.04 |              7.64 |     12.50 ± 1.03 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg32 |             33.60 |              7.91 |     10.68 ± 0.89 |
+| llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg64 |             33.74 |              7.92 |      9.37 ± 0.40 |
+
 ### KV Cache Discard 
 
 ### Sliding Window

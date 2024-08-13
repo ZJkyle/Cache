@@ -755,6 +755,8 @@ struct test {
     int n_gen;
     std::string test_time;
     std::vector<uint64_t> samples_ns;
+    std::vector<uint64_t> prompt_samples_ns;
+    std::vector<uint64_t> gen_samples_ns;
 
     test(const cmd_params_instance & inst, const llama_model * lmodel, const llama_context * ctx) {
         model_filename = inst.model;
@@ -783,8 +785,27 @@ struct test {
         time_t t = time(NULL);
         std::strftime(buf, sizeof(buf), "%FT%TZ", gmtime(&t));
         test_time = buf;
+        
 
         (void) ctx;
+        prompt_samples_ns.clear();
+        gen_samples_ns.clear();
+    }
+
+    uint64_t avg_prompt_ns() const {
+        return ::avg(prompt_samples_ns);
+    }
+
+    uint64_t avg_gen_ns() const {
+        return ::avg(gen_samples_ns);
+    }
+
+    double avg_prompt_ts() const {
+        return n_prompt > 0 ? 1e9 * n_prompt / avg_prompt_ns() : 0.0;
+    }
+
+    double avg_gen_ts() const {
+        return n_gen > 0 ? 1e9 * n_gen / avg_gen_ns() : 0.0;
     }
 
     uint64_t avg_ns() const {
@@ -849,7 +870,8 @@ struct test {
             "tensor_split", "use_mmap", "embeddings",
             "n_prompt", "n_gen", "test_time",
             "avg_ns", "stddev_ns",
-            "avg_ts", "stddev_ts"
+            "avg_ts", "stddev_ts",
+            "avg_prompt_ts", "avg_gen_ts", "total_t/s"
         };
         return fields;
     }
@@ -907,6 +929,13 @@ struct test {
             std::to_string(avg_ns()), std::to_string(stdev_ns()),
             std::to_string(avg_ts()), std::to_string(stdev_ts())
         };
+        char buf[64];
+        snprintf(buf, sizeof(buf), "%.2f", avg_prompt_ts());
+        values.push_back(buf);
+        snprintf(buf, sizeof(buf), "%.2f", avg_gen_ts());
+        values.push_back(buf);
+        snprintf(buf, sizeof(buf), "%.2f", avg_ts());
+        values.push_back(buf);
         return values;
     }
 
@@ -1037,6 +1066,9 @@ struct markdown_printer : public printer {
         if (field == "model") {
             return -30;
         }
+        if (field == "prompt_t/s" || field == "gen_t/s" || field == "total_t/s") {
+            return 16;
+        }
         if (field == "t/s") {
             return 16;
         }
@@ -1104,6 +1136,15 @@ struct markdown_printer : public printer {
         if (field == "tensor_split") {
             return "ts";
         }
+        if (field == "prompt_t/s") {
+            return "prompt t/s";
+        }
+        if (field == "gen_t/s") {
+            return "gen t/s";
+        }
+        if (field == "total_t/s") {
+            return "total t/s";
+        }
         return field;
     }
 
@@ -1154,7 +1195,9 @@ struct markdown_printer : public printer {
             fields.emplace_back("embeddings");
         }
         fields.emplace_back("test");
-        fields.emplace_back("t/s");
+        fields.emplace_back("prompt_t/s");
+        fields.emplace_back("gen_t/s");
+        fields.emplace_back("total_t/s");  // This replaces the original "t/s"
 
         fprintf(fout, "|");
         for (const auto & field : fields) {
@@ -1171,7 +1214,6 @@ struct markdown_printer : public printer {
 
     void print_test(const test & t) override {
         std::map<std::string, std::string> vmap = t.get_map();
-
         fprintf(fout, "|");
         for (const auto & field : fields) {
             std::string value;
@@ -1206,18 +1248,23 @@ struct markdown_printer : public printer {
                     snprintf(buf, sizeof(buf), "pp%d+tg%d", t.n_prompt, t.n_gen);
                 }
                 value = buf;
-            } else if (field == "t/s") {
-                snprintf(buf, sizeof(buf), "%.2f ± %.2f", t.avg_ts(), t.stdev_ts());
+            } else if (field == "prompt_t/s") {
+                snprintf(buf, sizeof(buf), "%.2f", t.avg_prompt_ts());
                 value = buf;
+            } else if (field == "gen_t/s") {
+                snprintf(buf, sizeof(buf), "%.2f", t.avg_gen_ts());
+                value = buf;
+            } else if (field == "total_t/s") {
+                snprintf(buf, sizeof(buf), "%.2f ± %.2f", t.avg_ts(), t.stdev_ts());
+                value = buf;        
             } else if (vmap.find(field) != vmap.end()) {
                 value = vmap.at(field);
             } else {
                 assert(false);
                 exit(1);
             }
-
             int width = get_field_width(field);
-            if (field == "t/s") {
+            if (field == "prompt_t/s" || field == "gen_t/s" || field == "total_t/s") {
                 // HACK: the utf-8 character is 2 bytes
                 width += 1;
             }
@@ -1269,7 +1316,8 @@ struct sql_printer : public printer {
     }
 };
 
-static void test_prompt(llama_context * ctx, int n_prompt, int n_past, int n_batch, int n_threads) {
+static void test_prompt(llama_context * ctx, int n_prompt, int n_past, int n_batch, int n_threads, uint64_t & time_ns) {
+    uint64_t t_start = get_time_ns();
     llama_set_n_threads(ctx, n_threads, n_threads);
 
     const llama_model * model = llama_get_model(ctx);
@@ -1290,9 +1338,11 @@ static void test_prompt(llama_context * ctx, int n_prompt, int n_past, int n_bat
     }
 
     llama_synchronize(ctx);
+    time_ns = get_time_ns() - t_start;
 }
 
-static void test_gen(llama_context * ctx, int n_gen, int n_past, int n_threads) {
+static void test_gen(llama_context * ctx, int n_gen, int n_past, int n_threads, uint64_t & time_ns) {
+    uint64_t t_start = get_time_ns();
     llama_set_n_threads(ctx, n_threads, n_threads);
 
     const llama_model * model = llama_get_model(ctx);
@@ -1305,6 +1355,7 @@ static void test_gen(llama_context * ctx, int n_gen, int n_past, int n_threads) 
         llama_synchronize(ctx);
         token = std::rand() % n_vocab;
     }
+    time_ns = get_time_ns() - t_start;
 }
 
 static void llama_null_log_callback(enum ggml_log_level level, const char * text, void * user_data) {
@@ -1402,22 +1453,27 @@ int main(int argc, char ** argv) {
         // warmup run
         if (t.n_prompt > 0) {
             //test_prompt(ctx, std::min(t.n_batch, std::min(t.n_prompt, 32)), 0, t.n_batch, t.n_threads);
-            test_prompt(ctx, t.n_prompt, 0, t.n_batch, t.n_threads);
+            uint64_t warmup_time;
+            test_prompt(ctx, t.n_prompt, 0, t.n_batch, t.n_threads, warmup_time);
         }
         if (t.n_gen > 0) {
-            test_gen(ctx, 1, 0, t.n_threads);
+            uint64_t warmup_time;
+            test_gen(ctx, 1, 0, t.n_threads, warmup_time);
         }
 
         for (int i = 0; i < params.reps; i++) {
             llama_kv_cache_clear(ctx);
 
             uint64_t t_start = get_time_ns();
+            uint64_t prompt_time = 0, gen_time = 0;
 
             if (t.n_prompt > 0) {
-                test_prompt(ctx, t.n_prompt, 0, t.n_batch, t.n_threads);
+                test_prompt(ctx, t.n_prompt, 0, t.n_batch, t.n_threads, prompt_time);
+                t.prompt_samples_ns.push_back(prompt_time);
             }
             if (t.n_gen > 0) {
-                test_gen(ctx, t.n_gen, t.n_prompt, t.n_threads);
+                test_gen(ctx, t.n_gen, t.n_prompt, t.n_threads, gen_time);
+                t.gen_samples_ns.push_back(gen_time);
             }
 
             uint64_t t_ns = get_time_ns() - t_start;

@@ -15,6 +15,7 @@
 #include <stdlib.h> // for qsort
 #include <stdio.h>  // for GGML_ASSERT
 #include <stdint.h>
+#include <time.h>
 
 #define GROUP_MAX_EPS 1e-15f
 #define GROUP_MAX_EPS_IQ3_XXS 1e-8f
@@ -709,6 +710,8 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
     const int nb = k/qk;
     assert(k % qk == 0);
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for(int i = 0; i < nb; i++){
       float min = FLT_MAX;
@@ -752,12 +755,22 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
 
       update_token_len_key_c(quant_group_id, layer_id);
     }
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double duration = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+    duration /= 1e6;
+    k_quant_time_c(duration);
 }
 
 void quantize_row_q4_v_roy_reference(const float * restrict x, int channel_id, int layer_id) {
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     float* tmp_addr = store_fetch_addr_value_c(channel_id, layer_id);
     *tmp_addr = *x;
     update_token_len_value_c(channel_id, layer_id);
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double duration = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+    duration /= 1e6;
+    v_quant_time_c(duration);
 }
 
 void quantize_row_q4_1_reference(const float * restrict x, block_q4_1 * restrict y, int64_t k) {
@@ -4833,6 +4846,8 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
     const block_q8_roy * restrict y = vy;
     // scalar
     float sumf = 0.0;
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
     for (int i = 0; i < nb; i++) {
         int quant_group_id = (head_id*128 + i*qk) / qk;
@@ -4860,6 +4875,10 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
         sumf += (GGML_FP16_TO_FP32((*x).d)*GGML_FP16_TO_FP32(y[i].d))*sumi + GGML_FP16_TO_FP32((*x).m)*GGML_FP16_TO_FP32(y[i].s);
     }
     *s = sumf;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double duration = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+    duration /= 1e6;
+    k_matmul_time_c(duration);
 }
 
 void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * restrict vy, int64_t channel_id, int64_t layer_id) {
@@ -4875,6 +4894,8 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
 
     uint8_t left_token_len = fetch_value_token_len_c(channel_id, layer_id);
 
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
     for(int b = 0; b < nb; b++){
       if(b < nb-1 || left_token_len%qk == 0){
         // have quantized and compressed
@@ -4908,6 +4929,10 @@ void ggml_vec_dot_q4_v_roy_q8_v_roy(int n, float * restrict s, const void * rest
       }
     }
     *s = sumf;
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double duration = (end.tv_sec - start.tv_sec) * 1e9 + (end.tv_nsec - start.tv_nsec);
+    duration /= 1e6;
+    v_matmul_time_c(duration);
 }
 
 

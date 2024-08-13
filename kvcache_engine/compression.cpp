@@ -14,11 +14,12 @@
 #include <cstdint>
 #include <cstdlib>
 #include <float.h>
-#include <fstream>
 #include <functional>
 #include <iostream>
 #include <numeric>
 #include <queue>
+
+FILE *k_q, *k_m, *v_q, *v_m;
 
 /////////////
 // common
@@ -532,6 +533,10 @@ void init_parameters(uint32_t n_size, uint32_t p_size, uint32_t k_en_size,
   init_1d_array<HuffmanResult>(v_huffmantable, v_huffmantable_size);
   // init key/value cache
   init_kv_cache();
+  k_q = fopen("my_prompts/k_quant_time.txt", "w");
+  k_m = fopen("my_prompts/k_matmul_time.txt", "w");
+  v_q = fopen("my_prompts/v_quant_time.txt", "w");
+  v_m = fopen("my_prompts/v_matmul_time.txt", "w");
 }
 
 void cleanup_buffers() {
@@ -551,6 +556,10 @@ void cleanup_buffers() {
   cleanup_1d_array<HuffmanResult>(v_huffmantable);
   // value cache
   clear_kv_cache();
+  fclose(k_q);
+  fclose(v_q);
+  fclose(k_m);
+  fclose(v_m);
 }
 
 void init_kv_cache() {
@@ -736,6 +745,10 @@ block_q4_roy *mulmat_fetch_block_addr_key_c(int64_t token_id,
   return key_cache[layer_id] + index;
 }
 bool enable_encoding_c(void) { return use_encode; }
+void k_quant_time_c(double time) { fprintf(k_q, "%f\n", time); }
+void k_matmul_time_c(double time) { fprintf(k_m, "%f\n", time); }
+void v_quant_time_c(double time) { fprintf(v_q, "%f\n", time); }
+void v_matmul_time_c(double time) { fprintf(v_m, "%f\n", time); }
 #endif
 #ifdef __cplusplus
 }

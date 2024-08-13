@@ -20,6 +20,10 @@ extern "C" {
 #endif
 struct Node;
 struct HuffmanResult;
+void k_quant_time_c(double time);
+void k_matmul_time_c(double time);
+void v_quant_time_c(double time);
+void v_matmul_time_c(double time);
 uint8_t *key_decoding_c(uint8_t *data, const uint8_t *code, int64_t token_id,
                         int64_t quant_group_id, int64_t layer_id);
 uint8_t *value_decoding_c(uint8_t *data, const uint8_t *code,

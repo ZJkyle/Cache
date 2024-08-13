@@ -30,7 +30,7 @@
 
 - Use `script_llama_server.sh`
 ```
-./../llama-server -m ../../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.ggu --host 0.0.0.0 --port 8080  -t 12 -c 4096 --keep -1
+./../llama-server -m ../../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf --host 0.0.0.0 --port 8080  -t 12 -c 4096 --keep -1
 
 # Basic web UI can be accessed via browser: http://localhost:8080
 # Chat completion endpoint: http://localhost:8080/v1/chat/completions

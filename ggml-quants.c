@@ -708,7 +708,6 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
     const int qk = QK4_ROY;
     const int nb = k/qk;
     assert(k % qk == 0);
-    bool enable_encode = enable_encoding_c();
 
 
     for(int i = 0; i < nb; i++){
@@ -744,11 +743,7 @@ void quantize_row_q4_roy_reference(const float * restrict x, int64_t k, int head
 
       uint8_t* block_addr;
 
-      if(enable_encode){
-        block_addr = store_fetch_addr_key_c(quant_group_id, layer_id);
-      }else{
-        block_addr = (*y).code;
-      }
+      block_addr = (*y).code;
       for (int j = 0; j < qk; j++){
             const float x0 = (x[i*qk+j] - min)*id;
             const uint8_t xi0 = MIN(15, (int8_t)(x0 + 0.5f));
@@ -4848,10 +4843,8 @@ void ggml_vec_dot_q4_roy_q8_roy(int n, float * restrict s, const void * restrict
         int sumi = 0;
         bool is_encoded = is_encoded_c(token_id, quant_group_id, layer_id);
         uint8_t* data;
-        if(!enable_encode){
+        if(!enable_encode ||!is_encoded){
           data = (*x).code;
-        }else if(!is_encoded){
-          data =  mulmat_fetch_addr_key_c(token_id, quant_group_id, layer_id);
         } else{
           uint8_t encoded_data[qk];
           data = key_decoding_c(encoded_data, (*x).code, token_id, quant_group_id, layer_id);

@@ -74,6 +74,9 @@ Example usage:
 | f16          | 14.97            | 7.3170 +/- 0.04676    |
 | q8_0         | 4.58             | 6.234284 ±   0.037878 |
 
+* Long context perplexity
+`./build/bin/llama-long-context-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf `
+
 ## Other documentations
 
 - [main (cli)](https://github.com/ggerganov/llama.cpp/blob/master/examples/main/README.md)

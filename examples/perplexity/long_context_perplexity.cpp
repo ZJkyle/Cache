@@ -13,6 +13,7 @@
 #include <array>
 #include <fstream>
 #include <sstream>
+#include <chrono>  // 用於計時
 
 #if defined(_MSC_VER)
 #pragma warning(disable: 4244 4267) // possible loss of data
@@ -30,85 +31,6 @@ struct results_log_softmax {
     float  logit;
     float  prob;
 };
-
-// 輔助函數：加載 LongBench 數據
-std::vector<std::string> load_longbench_data(const std::string& filename) {
-    std::vector<std::string> data;
-    std::ifstream file(filename);
-    std::string line;
-    while (std::getline(file, line)) {
-        data.push_back(line);
-    }
-    return data;
-}
-
-static results_perplexity long_context_perplexity(llama_context * ctx, const gpt_params & params, const int32_t n_ctx) {
-    // 1. 加載 LongBench 數據
-    std::vector<std::string> longbench_data = load_longbench_data(params.prompt);
-
-    // 2. 初始化結果結構
-    results_perplexity results;
-    results.ppl_value = 0.0;
-
-    // 3. 設置批處理大小和其他參數
-    const int n_vocab = llama_n_vocab(llama_get_model(ctx));
-    const int n_batch = params.n_batch;
-
-    // 4. 對每個 LongBench 任務進行迭代
-    for (const auto& task : longbench_data) {
-        // 5. 對任務進行分詞
-        std::vector<llama_token> tokens = ::llama_tokenize(ctx, task, true);
-
-        // 6. 初始化批處理
-        llama_batch batch = llama_batch_init(n_ctx, 0, 1);
-
-        double task_nll = 0.0;
-        int task_count = 0;
-
-        // 7. 批處理循環
-        for (size_t i = 0; i < tokens.size(); i += n_batch) {
-            int batch_size = std::min(n_batch, (int)(tokens.size() - i));
-
-            // 清除 KV 緩存
-            llama_kv_cache_clear(ctx);
-
-            // 添加令牌到批處理
-            for (int j = 0; j < batch_size; ++j) {
-                llama_batch_add(batch, tokens[i + j], i + j, { 0 }, j > 0);
-            }
-
-            // 8. 解碼批處理
-            if (llama_decode(ctx, batch)) {
-                fprintf(stderr, "%s : failed to eval\n", __func__);
-                return results;
-            }
-
-            // 9. 計算困惑度
-            const float* logits = llama_get_logits(ctx);
-            for (int j = 1; j < batch_size; ++j) {
-                task_nll -= logf(softmax(logits + j * n_vocab)[tokens[i + j]]);
-                task_count++;
-            }
-        }
-
-        // 10. 更新總體結果
-        if (task_count > 0) {
-            double task_ppl = exp(task_nll / task_count);
-            results.ppl_value += task_ppl;
-            results.tokens.insert(results.tokens.end(), tokens.begin(), tokens.end());
-        }
-
-        // 釋放批處理
-        llama_batch_free(batch);
-    }
-
-    // 11. 計算平均困惑度
-    if (!longbench_data.empty()) {
-        results.ppl_value /= longbench_data.size();
-    }
-
-    return results;
-}
 
 static void write_logfile(
     const llama_context * ctx, const gpt_params & params, const llama_model * model,
@@ -2040,13 +1962,30 @@ static void kl_divergence(llama_context * ctx, const gpt_params & params) {
 
 }
 
+// 函数用于计算文本的总长度（以字符为单位）
+size_t calculate_total_length(const std::string& file_path) {
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        fprintf(stderr, "Error opening file: %s\n", file_path.c_str());
+        return 0;
+    }
+
+    std::string content((std::istreambuf_iterator<char>(file)),
+                        (std::istreambuf_iterator<char>()));
+
+    file.close();
+
+    return content.size();  // 返回文本的字符总长度
+}
+
 int main(int argc, char ** argv) {
     gpt_params params;
 
     params.n_ctx = 8192;
     params.logits_all = true;
 
-    if (gpt_params_parse(argc, argv, params) == false) {
+    if (!gpt_params_parse(argc, argv, params)) {
+        gpt_params_print_usage(argc, argv, params);
         return 1;
     }
 
@@ -2056,7 +1995,6 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "%s: perplexity tool requires '--ctx-size' > 0\n", __func__);
         return 1;
     }
-    
 
     const bool ppl = !params.hellaswag && !params.winogrande && !params.multiple_choice && !params.kl_divergence;
 
@@ -2083,18 +2021,7 @@ int main(int argc, char ** argv) {
                 params.n_ctx, params.n_ctx + params.ppl_stride/2);
         params.n_ctx += params.ppl_stride/2;
     }
-    
-    // Check model path
-    if (params.model.empty()) {
-        fprintf(stderr, "%s: error: model path is required. Use -m or --model to specify.\n", __func__);
-        return 1;
-    }
 
-    // Check datasets path
-    if (params.prompt.empty()) {
-        fprintf(stderr, "%s: error: dataset path is required. Use -f to specify.\n", __func__);
-        return 1;
-    }
     print_build_info();
 
     if (params.seed == LLAMA_DEFAULT_SEED) {
@@ -2131,6 +2058,9 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "%s\n", gpt_params_get_system_info(params).c_str());
     }
 
+    // 記錄開始時間
+    auto start = std::chrono::high_resolution_clock::now();
+
     struct results_perplexity results;
     if (params.hellaswag) {
         hellaswag_score(ctx, params);
@@ -2144,8 +2074,30 @@ int main(int argc, char ** argv) {
         results = perplexity(ctx, params, n_ctx);
     }
 
+    // 記錄結束時間並計算時間差
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end - start;
+
     llama_print_timings(ctx);
     write_logfile(ctx, params, model, results);
+
+    // 擷取檔案名稱 (假設文件名通過參數傳遞)
+    std::string file_name = params.prompt_file;
+    size_t total_length = calculate_total_length(file_name);  // 或 calculate_total_token_count(file_name)
+
+    // 記錄到 CSV 檔案
+    std::ofstream csv_file;
+    csv_file.open("perplexity_results.csv", std::ios::app); // 打開CSV文件（追加模式）
+
+    if (csv_file.is_open()) {
+        csv_file << file_name << ","
+                 << total_length << ","
+                 << results.ppl_value << ","  // 根據 results 結構體中的字段
+                 << elapsed_seconds.count() << "\n";
+        csv_file.close();
+    } else {
+        fprintf(stderr, "Error opening CSV file!\n");
+    }
 
     llama_free(ctx);
     llama_free_model(model);

@@ -67,7 +67,7 @@ Example usage:
 ### Perplexity (measuring model quality)
 
 * Llama3.1-8B
-`./llama-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf --kl-divergence-base kld/llama3.1_8B_F16.kld `
+`./build/bin/llama-perplexity -f ../datasets/pg19/test -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -t 12`
 
 | Quantization | Model size [GiB] | PPL                   |
 | ------------ | ---------------- | --------------------- |

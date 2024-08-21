@@ -59,7 +59,7 @@ root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instr
 | llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg128 |              0.00 |              8.52 |      8.55 ± 0.49 |
 | llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         tg512 |              0.00 |              8.39 |      8.40 ± 0.15 |
 
-root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -pg 8,8 -pg 8,16 -pg 8,32 -pg 8,64 -pg 16,8 -pg 16,16 -pg 16,32 -pg 16,64 -n 0 -embd 1 -t 12
+root@DESKTOP-1P405LN:~/Cache# ./llama-bench -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -r 10 -pg 8,8 -pg 8,16 -pg 8,32 -pg 8,64 -pg 16,8 -pg 16,16 -pg 16,32 -pg 16,64 -n 0 -embd 1 -t 12 
 | model                          |       size |     params | backend    | threads |       embd |          test |       prompt t/s |          gen t/s |        total t/s |
 | ------------------------------ | ---------: | ---------: | ---------- | ------: | ---------: | ------------: | ---------------: | ---------------: | ---------------: |
 | llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |         pp512 |             36.62 |              0.00 |     36.62 ± 0.43 |

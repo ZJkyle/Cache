@@ -1980,7 +1980,6 @@ size_t calculate_total_length(const std::string& file_path) {
 
 int main(int argc, char ** argv) {
     gpt_params params;
-
     params.n_ctx = 8192;
     params.logits_all = true;
 
@@ -2060,6 +2059,7 @@ int main(int argc, char ** argv) {
 
     // 記錄開始時間
     auto start = std::chrono::high_resolution_clock::now();
+    printf("\n------------Start Long context Perplexity Test---------\n");
 
     struct results_perplexity results;
     if (params.hellaswag) {

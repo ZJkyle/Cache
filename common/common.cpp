@@ -299,6 +299,14 @@ bool gpt_params_find_arg(int argc, char ** argv, const std::string & arg, gpt_pa
         sparams.seed = std::stoul(argv[i]);
         return true;
     }
+    /*
+    if (arg == "--kyle") {
+        CHECK_ARG
+        fprintf(stderr, "Testing\n");
+        return true;
+    }
+     */
+    
     if (arg == "-t" || arg == "--threads") {
         CHECK_ARG
         params.n_threads = std::stoi(argv[i]);

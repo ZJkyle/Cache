@@ -1,6 +1,3 @@
-# perplexity eval
-## run /root/datasets/pg19/test/.txt for 50 files 
-## ./build/bin/llama-long-context-perplexity -f ../datasets/pg19/test/.txt -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf -t 12
 #!/bin/bash
 
 # 定義模型路徑和執行檔
@@ -15,16 +12,15 @@ if [ ! -d "$DATASET_PATH" ]; then
   exit 1
 fi
 
-# 取得前50個 .txt 檔案
-FILES=($(ls "$DATASET_PATH"*.txt | head -n 50))
+# 取得倒數50個 .txt 檔案
+FILES=($(ls "$DATASET_PATH"*.txt | tail -n 50))
 
 # 逐一處理每個檔案
 for FILE in "${FILES[@]}"; do
   echo "正在處理檔案: $FILE"
   $BIN_PATH -f "$FILE" -m "$MODEL_PATH" -t "$THREADS"
   if [ $? -ne 0 ]; then
-    echo "執行 $FILE 評估時發生錯誤！"
-    exit 1
+    echo "執行 $FILE 評估時發生錯誤！繼續處理下一個檔案。"
   fi
 done
 

@@ -73,6 +73,15 @@
 | llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg64 |             33.74 |              7.92 |      9.37 ± 0.40 |
 
 ## Memory 
+* Use `./scripts/llama_memory_test.sh`
+| 模型 | 生成 token 數量 | 記憶體使用 (KB) | 記憶體使用 (GB) |
+|------|----------------|----------------|----------------|
+| Meta-Llama-3.1-8B-Instruct-Q4_K_M | 64   | 4,890,596 KB  | 4.66 GB |
+| Meta-Llama-3.1-8B-Instruct-Q4_K_M | 1024 | 5,008,788 KB  | 4.78 GB |
+| Meta-Llama-3.1-8B-Instruct-Q4_K_M | 8192 | 5,934,244 KB  | 5.66 GB |
+| Meta-Llama-3.1-8B-Instruct-F16    | 64   | 15,353,536 KB | 14.64 GB |
+| Meta-Llama-3.1-8B-Instruct-F16    | 1024 | 15,474,996 KB | 14.75 GB |
+| Meta-Llama-3.1-8B-Instruct-F16    | 8192 | 15,604,076 KB | 14.88 GB |
 
 ## Accuracy(Perplexity)
 

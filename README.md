@@ -3,7 +3,7 @@
 ![Manatee](./photoes/pexels-koji-kamei-4766707-scaled-e1687878979926-1280x720.jpg)
 
 ## To-Do
-- [x] Eval [Perplexity](#perplexity-measuring-model-quality)
+- [ ] Test memory usage
 - [ ] [Constraint output](#constrained-output-with-grammars)
 
 ## Recent changes

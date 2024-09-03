@@ -1,12 +1,9 @@
 # llama.cpp inference Optimization
 
 ## To-Do
-- [ ] How is Llama-server working ?
-- [ ] How to improve inference speed
+- [x] Memory Usage test
 
 ## Recent changes
-
-- [2024 Jun 26] [PR #8006](https://github.com/ggerganov/llama.cpp/pull/8006) (Change to my PR)
 
 ## Models
 - [LLaMA 3.1 🦙🦙🦙](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)
@@ -73,7 +70,7 @@
 | llama 8B Q4_K - Medium         |   4.58 GiB |     8.03 B | CPU        |      12 |          1 |     pp16+tg64 |             33.74 |              7.92 |      9.37 ± 0.40 |
 
 ## Memory 
-* Use `./scripts/llama_memory_test.sh`
+* Use `./scripts/llama_memory_test.sh`o
 | 模型 | 生成 token 數量 | 記憶體使用 (KB) | 記憶體使用 (GB) |
 |------|----------------|----------------|----------------|
 | Meta-Llama-3.1-8B-Instruct-Q4_K_M | 64   | 4,890,596 KB  | 4.66 GB |

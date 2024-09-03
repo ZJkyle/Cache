@@ -3,12 +3,8 @@
 ![Manatee](./photoes/pexels-koji-kamei-4766707-scaled-e1687878979926-1280x720.jpg)
 
 ## To-Do
-- [ ] Test memory usage
-- [ ] [Constraint output](#constrained-output-with-grammars)
 
 ## Recent changes
-
-- [2024 Jun 26] [PR #8006](https://github.com/ggerganov/llama.cpp/pull/8006) (Change to my PR)
 
 ## Models
 

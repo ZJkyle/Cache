@@ -2,17 +2,31 @@
 
 ![Manatee](./photoes/pexels-koji-kamei-4766707-scaled-e1687878979926-1280x720.jpg)
 
-## To-Do
+## Description
 
-## Recent changes
+Add KV Cache optimizing module to llama.cpp project.
 
 ## Models
 
-- [LLaMA 2 🦙🦙](https://huggingface.co/meta-llama/Llama-2-7b-chat-hf)
 - [LLaMA 3 🦙🦙🦙](https://huggingface.co/meta-llama/Meta-Llama-3-8B)
 - [LLaMA 3.1 🦙🦙🦙](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)
 
 ## Usage
+
+### Build
+
+- Rebuild:
+
+  ```bash
+  # for debug
+  rm -rf build
+  cmake -B build -DCMAKE_BUILD_TYPE=Debug
+  cmake --build build -j$nproc
+  # normal
+  rm -rf build
+  cmake -B build
+  cmake --build build --config Release -j$nproc
+  ```
 
 ### Basic usage
 

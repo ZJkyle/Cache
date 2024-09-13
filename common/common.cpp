@@ -1336,6 +1336,15 @@ bool gpt_params_find_arg(int argc, char ** argv, const std::string & arg, gpt_pa
         else { invalid_param = true; }
         return true;
     }
+    // Kyle
+    if (arg == "--discard_method") {
+        if (i + 1 < argc) {
+            params.discard_method = argv[++i];
+        } else {
+            fprintf(stderr, "Error: --discard_method requires a value\n");
+            exit(1);
+        }
+    }
 #ifndef LOG_DISABLE_LOGS
     // Parse args for logging parameters
     if (log_param_single_parse(argv[i])) {

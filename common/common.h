@@ -218,7 +218,7 @@ struct gpt_params {
 
     float slot_prompt_similarity = 0.5f;
 
-    // batched-bench params
+    // batched-bench params【
     bool is_pp_shared = false;
 
     std::vector<int32_t> n_pp;
@@ -255,6 +255,9 @@ struct gpt_params {
     std::string cvector_negative_file = "examples/cvector-generator/negative.txt";
 
     bool spm_infill = false; // suffix/prefix/middle pattern for infill
+
+    //kyle
+     std::string discard_method = "default";
 };
 
 void gpt_params_handle_hf_token(gpt_params & params);

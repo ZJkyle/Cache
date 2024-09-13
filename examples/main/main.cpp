@@ -584,8 +584,20 @@ int main(int argc, char ** argv) {
                     }
                     
                     const int n_left    = n_past - params.n_keep;
-                    //const int n_discard = 2;
-                    const int n_discard = n_left/2;
+                    int n_discard;
+                    if (params.discard_method == "pyramid") {
+                        // Pyramid discard method: exponentially decrease the number of tokens to discard
+                        n_discard = n_left / 4;  // Example: discard fewer tokens
+                        LOG("Pyramid discard method activated: n_discard = %d\n", n_discard);
+                    } else if (params.discard_method == "test") {
+                        // Aggressive discard method: discard more tokens aggressively
+                        n_discard = 2;  // Discard all available tokens
+                        LOG("Aggressive discard method activated: n_discard = %d\n", n_discard);
+                    } else {
+                        // Default method: keep half of the left tokens
+                        n_discard = n_left / 2;
+                        LOG("Default discard method activated: n_discard = %d\n", n_discard);
+                    }                
 
                     LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
                             n_past, n_left, n_ctx, params.n_keep, n_discard);

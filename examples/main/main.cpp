@@ -569,15 +569,49 @@ int main(int argc, char ** argv) {
                 console::set_display(console::reset);
                 fflush(stdout);
             }
-
+            // Window Attention
+            int kyle =1;
             if (ga_n == 1) {
                 // infinite text generation via context shifting
                 // if we run out of context:
                 // - take the n_keep first tokens from the original prompt (via n_past)
                 // - take half of the last (n_ctx - n_keep) tokens and recompute the logits in batches
+                if(kyle){
+                    if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= n_ctx) {
+                        if (params.n_predict == -2) {
+                            LOG_TEE("\n\n%s: context full and n_predict == -%d => stopping\n", __func__, params.n_predict);
+                            break;
+                        }
+                        
+                        const int n_left    = n_past - params.n_keep;
+                        int n_discard;
+                        
+                        // Default method: keep half of the left tokens
+                        n_discard = n_left / 4;
+                        LOG("modified discard method activated: n_discard = %d\n", n_discard);
+                                    
 
+                        LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
+                                n_past, n_left, n_ctx, params.n_keep, n_discard);
 
-                if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= n_ctx) {
+                        llama_kv_cache_seq_rm (ctx, 0, params.n_keep +1           , params.n_keep + n_discard+1);
+                        llama_kv_cache_seq_add(ctx, 0, params.n_keep + n_discard+1, n_past, -n_discard);
+
+                        n_past -= n_discard;
+
+                        if (ctx_guidance) {
+                            n_past_guidance -= n_discard;
+                        }
+
+                        LOG("after swap: n_past = %d, n_past_guidance = %d\n", n_past, n_past_guidance);
+
+                        LOG("embd: %s\n", LOG_TOKENS_TOSTR_PRETTY(ctx, embd).c_str());
+
+                        LOG("clear session path\n");
+                        path_session.clear();
+                    }
+                }
+                else if (n_past + (int) embd.size() + std::max<int>(0, guidance_offset) >= n_ctx) {
                     if (params.n_predict == -2) {
                         LOG_TEE("\n\n%s: context full and n_predict == -%d => stopping\n", __func__, params.n_predict);
                         break;
@@ -585,19 +619,11 @@ int main(int argc, char ** argv) {
                     
                     const int n_left    = n_past - params.n_keep;
                     int n_discard;
-                    if (params.discard_method == "pyramid") {
-                        // Pyramid discard method: exponentially decrease the number of tokens to discard
-                        n_discard = n_left / 4;  // Example: discard fewer tokens
-                        LOG("Pyramid discard method activated: n_discard = %d\n", n_discard);
-                    } else if (params.discard_method == "test") {
-                        // Aggressive discard method: discard more tokens aggressively
-                        n_discard = 2;  // Discard all available tokens
-                        LOG("Aggressive discard method activated: n_discard = %d\n", n_discard);
-                    } else {
-                        // Default method: keep half of the left tokens
-                        n_discard = n_left / 2;
-                        LOG("Default discard method activated: n_discard = %d\n", n_discard);
-                    }                
+                    
+                    // Default method: keep half of the left tokens
+                    n_discard = n_left / 2;
+                    LOG("Default discard method activated: n_discard = %d\n", n_discard);
+                                
 
                     LOG("context full, swapping: n_past = %d, n_left = %d, n_ctx = %d, n_keep = %d, n_discard = %d\n",
                             n_past, n_left, n_ctx, params.n_keep, n_discard);

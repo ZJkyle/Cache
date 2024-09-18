@@ -82,7 +82,8 @@
 ## Accuracy(Perplexity)
 
 * Wikitest Result
-`./build/bin/llama-perplexity -f ../datasets/pg19/test -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -t 12`
+`./build/bin/llama-long-context-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf `
+
 
 | Quantization | Model size [GiB] | PPL                   |
 | ------------ | ---------------- | --------------------- |
@@ -90,7 +91,7 @@
 | q8_0         | 4.58             | 6.234284 ±   0.037878 |
 
 * Long context perplexity (pg19)
-`./build/bin/llama-long-context-perplexity -f wikitext-2-raw/wiki.test.raw -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-F16.gguf `
+`./build/bin/llama-perplexity -f ../datasets/pg19/test -m ../models/Meta-Llama-3.1-8B-Instruct/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf -t 12`
 
 | 檔案名稱           | words數量 | perplexity | 測試時間   |
 |------------------|----------|------------|-----------|

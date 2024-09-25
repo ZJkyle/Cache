@@ -570,7 +570,7 @@ int main(int argc, char ** argv) {
                 fflush(stdout);
             }
             // Window Attention
-            int kyle =1;
+            int kyle =1; // if kyle =1, use streamllm, if not, use window attention
             if (ga_n == 1) {
                 // infinite text generation via context shifting
                 // if we run out of context:
